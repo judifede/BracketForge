@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -16,31 +18,60 @@
   .container-label {
     @apply !flex justify-between items-center gap-2 !w-full font-medium;
   }
-
 }
 
 :root {
   color-scheme: dark;
   color: #ffffff;
-  background-color: #213547;
+
+  --font-display: 'Orbitron', 'Segoe UI', sans-serif;
+  --font-body: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  /* Esports stage tokens */
+  --bg-deep: #0b1116;
+  --bg-stage: #0f1519;
+  --bg-panel: #1c242c;
+  --bg-slot: #1c1c1c;
+  --border-subtle: #262626;
+  --border-muted: rgba(255, 255, 255, 0.14);
+  --accent-live: #2dd4bf;
+  --accent-win: #f5c518;
+  --accent-brand: #fb923c;
+  --text-muted: rgba(255, 255, 255, 0.8);
+
+  background-color: var(--bg-deep);
+  background-image:
+    radial-gradient(
+      ellipse 120% 70% at 50% -10%,
+      rgba(45, 212, 191, 0.07) 0%,
+      transparent 50%
+    ),
+    linear-gradient(180deg, #121a22 0%, var(--bg-deep) 42%, #080c10 100%);
+  background-attachment: fixed;
+  font-family: var(--font-body);
 }
 
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  overflow-x: hidden;
+  font-family: var(--font-body);
 }
 
 #app {
-  max-width: 1280px;
+  max-width: min(1280px, 100%);
   margin: 0 auto;
-  padding: 2rem;
+  padding: 1rem;
   text-align: center;
+  overflow-x: clip;
 }
 
-textarea {
-  field-sizing: content;
-  @apply max-h-[120px] overflow-hidden;
+@media (min-width: 640px) {
+  #app {
+    padding: 2rem;
+  }
 }
 
 .no-valid {
@@ -48,19 +79,16 @@ textarea {
 }
 
 ::placeholder {
-  @apply !font-medium !text-white/60;
+  @apply !font-medium !text-white/80;
 }
-
-
-
-
 
 .error-message {
   @apply text-red-500 text-balance;
 }
 
 button:disabled {
-  @apply bg-slate-300;
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 label {
@@ -69,9 +97,112 @@ label {
 
 input,
 select {
-  @apply box-input bg-[#2A2A2A] text-white;
+  @apply box-input text-white;
+  background-color: var(--bg-slot);
+  border: 1px solid var(--border-subtle);
+  font-family: var(--font-body);
 }
 
-select{
+select {
   @apply border-r-[16px] border-transparent;
+}
+
+button {
+  font-family: var(--font-body);
+}
+
+/* driver.js esports theme */
+.cbg-driver-popover.driver-popover {
+  background: var(--bg-panel);
+  color: #fff;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+  max-width: 320px;
+}
+
+.cbg-driver-popover .driver-popover-title {
+  font-family: var(--font-display);
+  color: var(--accent-win);
+  font-size: 1rem;
+}
+
+.cbg-driver-popover .driver-popover-description {
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.cbg-driver-popover .driver-popover-progress-text {
+  color: var(--accent-live);
+  font-size: 0.75rem;
+}
+
+.cbg-driver-popover .driver-popover-next-btn,
+.cbg-driver-popover .driver-popover-done-btn {
+  background: var(--accent-win) !important;
+  color: #121212 !important;
+  border: none !important;
+  text-shadow: none !important;
+  font-weight: 700;
+}
+
+.cbg-driver-popover .driver-popover-prev-btn {
+  background: transparent !important;
+  color: var(--accent-live) !important;
+  border: 1px solid color-mix(in srgb, var(--accent-live) 50%, transparent) !important;
+  text-shadow: none !important;
+}
+
+.cbg-driver-popover .driver-popover-close-btn {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+@media print {
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  #app {
+    max-width: none;
+    padding: 0;
+  }
+
+  .no-print,
+  .help-toolbar,
+  .zoom-controls,
+  .scroll-hint,
+  .bracket-toolbar,
+  footer,
+  .winner-hint,
+  .champion-banner {
+    display: none !important;
+  }
+
+  .bracket-stage {
+    border: none !important;
+    box-shadow: none !important;
+    background: #fff !important;
+  }
+
+  .bracket-scroll {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .slot-text,
+  .round-label-text,
+  .champion-text {
+    fill: #111 !important;
+  }
+
+  .slot-rect,
+  .champion-slot {
+    fill: #f4f4f4 !important;
+    stroke: #333 !important;
+  }
+
+  .win-bar {
+    fill: #c9a227 !important;
+  }
 }

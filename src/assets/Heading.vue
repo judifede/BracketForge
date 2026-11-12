@@ -1,7 +1,10 @@
 <template>
   <component
     :is="tag"
-    :class="['box md:h-[70px] text-4xl text-orange-400', additionalClasses]"
+    :class="[
+      'box md:h-[70px] text-2xl sm:text-3xl md:text-4xl text-[var(--accent-win,#f5c518)]',
+      additionalClasses,
+    ]"
   >
     <div class="inline-flex flex-col gap-3">
       <slot></slot>
@@ -17,7 +20,7 @@
 </template>
 
 <script setup>
-const props = defineProps({
+defineProps({
   tag: {
     type: String,
     default: 'h1',

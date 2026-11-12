@@ -1,76 +1,68 @@
 <template>
-  <div
-    v-if="isOpen"
-    @click="closeModal"
-    class="bg-black opacity-15 absolute w-full h-full"
-  ></div>
   <vue-final-modal
     v-model="isOpen"
-    class="absolute inset-0 top-2/4 -translate-y-2/4"
+    class="players-modal-host flex items-center justify-center"
+    content-class="players-modal-content"
+    overlay-class="players-modal-overlay"
+    :click-to-close="true"
+    :esc-to-close="true"
+    :focus-trap="true"
   >
-    <div v-if="winnerModal" class="flex items-center justify-center h-full">
-      <div
-        class="bg-[#323232] p-6 rounded-lg shadow-lg flex flex-col gap-7 px-20 py-10 relative"
+    <div
+      class="modal-panel relative flex flex-col gap-6 px-8 py-8 min-w-[320px] max-w-[min(92vw,420px)]"
+      role="dialog"
+      aria-modal="true"
+      :aria-labelledby="titleId"
+    >
+      <h2 :id="titleId" class="text-xl font-bold text-left">{{ title }}</h2>
+      <p class="text-sm text-white/75 text-left -mt-3">
+        Actualizar la lista reinicia el progreso del bracket.
+      </p>
+
+      <FormPlayers
+        id="modal-players"
+        name="players"
+        v-model:players="playersText"
+        :force-show-errors="attempted"
+        @isTextAreaValid="handleIsTextAreaValid"
+        @validation="handleValidation"
+      />
+
+      <button
+        type="button"
+        class="absolute right-3 top-2 p-1 text-white hover:text-[var(--accent-brand)]"
+        aria-label="Cerrar"
+        @click="closeModal"
       >
-        <h2 class="text-xl font-bold">{{ title }}</h2>
-        <ul class="flex flex-col gap-5">
-          <li
-            v-for="(item, index) in players"
-            :key="index"
-            class="p-2 cursor-pointer border border-purple-100"
-            @click="setWinnerProps(item)"
-          >
-            {{ item }}
-          </li>
-        </ul>
-        <Close @click="closeModal" class="cursor-pointer"></Close>
-      </div>
-    </div>
+        <Close additionalClasses="block" />
+      </button>
 
-    <div v-if="updatePlayers" class="flex items-center justify-center h-full">
-      <div
-        class="bg-[#323232] p-6 rounded-lg shadow-lg flex flex-col gap-7 px-20 py-10 relative"
+      <button
+        type="button"
+        class="update-btn"
+        :disabled="!canSubmit"
+        @click="setUpdatePlayers"
       >
-        <h2 class="text-xl font-bold">{{ title }}</h2>
-
-        <FormPlayers
-          id="players"
-          name="players"
-          @isTextAreaValid="handleIsTextAreaValid"
-          v-model:players="tournamentPlayers.players"
-        ></FormPlayers>
-
-        <Close @click="closeModal" class="cursor-pointer"></Close>
-        <button
-          @click="setUpdatePlayers"
-          class="bg-[#2A2A2A] text-white px-4 py-2 rounded"
-        >
-          Actualizar
-        </button>
-      </div>
+        Actualizar
+      </button>
     </div>
   </vue-final-modal>
-  <Toaster richColors />
 </template>
 
 <script setup>
 import FormPlayers from './Init/FormPlayers.vue'
 import Close from '../assets/Close.vue'
+import {
+  canSubmitPlayersUpdate,
+  serializePlayers,
+  validatePlayersInput,
+} from '../utils/formValidation.js'
 
-import { ref, reactive, computed } from 'vue'
-
-import { Toaster, toast } from 'vue-sonner'
+import { ref, computed, watch } from 'vue'
+import { toast } from 'vue-sonner'
 
 const props = defineProps({
   showModal: {
-    type: Boolean,
-    default: false,
-  },
-  winnerModal: {
-    type: Boolean,
-    default: false,
-  },
-  updatePlayers: {
     type: Boolean,
     default: false,
   },
@@ -78,52 +70,60 @@ const props = defineProps({
     type: String,
     default: '',
   },
-  handleUpdatePlayers: {
-    type: Function,
-  },
   players: {
     type: Array,
+    default: () => [],
   },
 })
 
-const emit = defineEmits([
-  'update:players',
-  'update:showModal',
-  'close',
-  'winnerProps',
-])
+const emit = defineEmits(['update:showModal', 'close', 'update-players'])
 
-const setWinnerProps = (item) => {
-  emit('winnerProps', item)
-  toast.success(item + ' ha ganado!')
-  emit('close')
-}
+const titleId = 'players-modal-title'
+const playersText = ref(serializePlayers(props.players))
+const textAreaValid = ref(props.players.length >= 2)
+const attempted = ref(false)
+const playersValidation = ref(null)
 
-//FormPlayers
-const tournamentPlayers = reactive({
-  players: props.players,
-})
-
-const isTextAreaValid = computed({
-  get: () =>
-    tournamentPlayers.players !== null && tournamentPlayers.players.length > 0,
-  set: (value) => {},
-})
+watch(
+  () => [props.showModal, props.players],
+  ([open]) => {
+    if (open) {
+      playersText.value = serializePlayers(props.players)
+      textAreaValid.value = props.players.length >= 2
+      attempted.value = false
+    }
+  }
+)
 
 const handleIsTextAreaValid = (state) => {
-  isTextAreaValid.value = state
+  textAreaValid.value = state
 }
-//End FormPlayers
+
+const handleValidation = (result) => {
+  playersValidation.value = result
+}
+
+const canSubmit = computed(
+  () => textAreaValid.value && canSubmitPlayersUpdate(playersText.value)
+)
 
 const setUpdatePlayers = () => {
-  if (!isTextAreaValid.value) {
+  attempted.value = true
+  const next = validatePlayersInput(playersText.value)
+  if (!next.ok) {
+    toast.error(next.error || 'Se necesitan al menos 2 jugadores')
     return
   }
-  if (typeof tournamentPlayers.players === 'string') {
-    props.handleUpdatePlayers(tournamentPlayers.players.split(','))
-  } else {
-    props.handleUpdatePlayers(tournamentPlayers.players)
+
+  const confirmed = window.confirm(
+    'Actualizar los jugadores reinicia todo el progreso del bracket. ¿Continuar?'
+  )
+  if (!confirmed) return
+
+  if (next.hadDuplicates) {
+    toast.info('Se omitieron nombres duplicados.')
   }
+  emit('update-players', next.players)
   toast.info('Jugadores actualizados')
   closeModal()
 }
@@ -135,6 +135,55 @@ const isOpen = computed({
 
 const closeModal = () => {
   isOpen.value = false
+  attempted.value = false
   emit('close')
 }
 </script>
+
+<style scoped>
+.modal-panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+}
+
+.update-btn {
+  border-radius: 4px;
+  border: 1px solid color-mix(in srgb, var(--accent-win) 55%, transparent);
+  background: color-mix(in srgb, var(--bg-slot) 80%, #1a1a1a);
+  color: var(--accent-win);
+  padding: 0.55rem 1rem;
+  font-weight: 600;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.update-btn:hover:enabled {
+  background: color-mix(in srgb, var(--accent-win) 12%, transparent);
+  border-color: var(--accent-win);
+}
+
+.update-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  color: rgba(255, 255, 255, 0.5);
+  border-color: var(--border-subtle);
+  background: color-mix(in srgb, var(--bg-slot) 70%, #64748b);
+}
+</style>
+
+<style>
+.players-modal-overlay {
+  background: rgba(5, 8, 12, 0.72) !important;
+  backdrop-filter: blur(2px);
+}
+
+.players-modal-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+</style>
