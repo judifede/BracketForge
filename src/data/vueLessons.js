@@ -34,7 +34,7 @@ export const VUE_LESSONS = {
         title: 'Componentes hijos',
         concept: 'props + slots de datos',
         body:
-          '`FormPlayers` es un hijo reutilizable. Recibe `players` como prop/string del textarea y avisa al padre con `update:players` (patrón de `v-model:players`).',
+          '`FormPlayers` es un hijo reutilizable. Muestra casillas según el cupo (4/8/16), serializa los nombres y avisa al padre con `update:players` (patrón de `v-model:players`).',
       },
       {
         title: 'Presets y estado local',

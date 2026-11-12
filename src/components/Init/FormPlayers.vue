@@ -1,39 +1,63 @@
 <template>
   <div class="flex flex-col gap-1 text-left players-field">
-    <div class="flex items-center justify-between gap-2">
-      <label :for="id" class="!justify-start text-sm font-medium text-white/80">
+    <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+      <label :for="inputId" class="!justify-start text-sm font-medium text-white">
         Participantes
       </label>
-      <button
-        type="button"
-        class="expand-btn"
-        :aria-pressed="expanded"
-        @click="expanded = !expanded"
+      <div
+        class="inline-flex flex-wrap gap-[0.3rem]"
+        role="group"
+        aria-label="Cantidad de participantes"
       >
-        {{ expanded ? 'Compactar' : 'Ampliar' }}
-      </button>
+        <button
+          v-for="size in SIZES"
+          :key="size"
+          type="button"
+          class="chip"
+          :class="{ 'chip--active': targetSize === size }"
+          :aria-pressed="targetSize === size"
+          @click="setTargetSize(size)"
+        >
+          {{ size }}
+        </button>
+      </div>
     </div>
-    <textarea
-      placeholder="Uno por línea o separados por coma"
-      class="players-textarea box w-full max-w-[370px] text-white"
-      :class="{ 'players-textarea--expanded': expanded, 'no-valid': showError }"
-      :id="id"
-      :name="name"
-      :value="players"
+
+    <div
+      class="grid max-w-[370px] grid-cols-1 gap-[0.45rem] min-[420px]:grid-cols-2"
       :data-tour="$attrs['data-tour']"
-      @input="handleInput"
-      @blur="markTouched"
-      :aria-invalid="showError"
-      :aria-describedby="describedBy"
-    ></textarea>
+    >
+      <label
+        v-for="(slot, index) in slotValues"
+        :key="index"
+        class="flex flex-col gap-[0.2rem]"
+      >
+        <span class="text-[0.7rem] font-semibold uppercase tracking-wide text-text-muted">
+          Jugador {{ index + 1 }}
+        </span>
+        <input
+          :id="index === 0 ? inputId : undefined"
+          class="box w-full rounded-md border border-subtle px-[0.55rem] py-[0.4rem] text-white"
+          :class="{ 'bg-slot': !String(slot).trim() }"
+          type="text"
+          :value="slot"
+          :name="index === 0 ? name : undefined"
+          autocomplete="off"
+          :aria-invalid="showError && index === 0"
+          :aria-describedby="index === 0 ? describedBy : undefined"
+          @input="onSlotInput(index, $event.target.value)"
+          @blur="onSlotBlur(index)"
+        />
+      </label>
+    </div>
 
     <p
-      v-if="previewCount > 0"
-      class="text-sm text-white/80"
+      v-if="previewCount > 0 || targetSize > 0"
+      class="text-sm"
+      :class="cupoCountClass"
       :id="countId"
     >
-      {{ previewCount }} participante{{ previewCount === 1 ? '' : 's' }}
-      <span v-if="previewNames" class="text-white/80"> — {{ previewNames }}</span>
+      {{ previewCount }} / {{ targetSize }} participante{{ targetSize === 1 ? '' : 's' }}
     </p>
 
     <div
@@ -58,8 +82,12 @@
 import { computed, ref, watch } from 'vue'
 import {
   parsePlayers,
+  serializePlayers,
   validatePlayersInput,
+  normalizeName,
 } from '../../utils/players.js'
+import capitalize from '../../utils/utils.js'
+import { SIZES } from '../../data/formPresets.js'
 
 defineOptions({ inheritAttrs: false })
 
@@ -85,14 +113,31 @@ const props = defineProps({
     type: Number,
     default: 2,
   },
+  /** Number of fixed slots from 4/8/16 chips. */
+  targetSize: {
+    type: Number,
+    default: 8,
+  },
 })
 
-const emit = defineEmits(['update:players', 'isTextAreaValid', 'validation'])
+const emit = defineEmits([
+  'update:players',
+  'update:targetSize',
+  'isTextAreaValid',
+  'validation',
+])
+
+function setTargetSize(size) {
+  if (size === props.targetSize) return
+  emit('update:targetSize', size)
+}
 
 const touched = ref(false)
-const expanded = ref(false)
+const slotValues = ref([])
+
 const errorId = computed(() => `${props.id}-error`)
 const countId = computed(() => `${props.id}-count`)
+const inputId = computed(() => props.id)
 
 const validation = computed(() =>
   validatePlayersInput(props.players, { min: props.minPlayers })
@@ -100,12 +145,6 @@ const validation = computed(() =>
 
 const previewPlayers = computed(() => parsePlayers(props.players))
 const previewCount = computed(() => previewPlayers.value.length)
-const previewNames = computed(() => {
-  const list = previewPlayers.value
-  if (list.length === 0) return ''
-  if (list.length <= 4) return list.join(', ')
-  return `${list.slice(0, 3).join(', ')}…`
-})
 
 const showError = computed(
   () => (touched.value || props.forceShowErrors) && !validation.value.ok
@@ -118,16 +157,38 @@ const showDuplicateHint = computed(
     (touched.value || props.forceShowErrors || previewCount.value > 0)
 )
 
+const cupoCountClass = computed(() => {
+  if (previewCount.value === props.targetSize) return 'text-live'
+  return 'text-white/80'
+})
+
 const describedBy = computed(() => {
   const ids = []
-  if (previewCount.value > 0) ids.push(countId.value)
+  if (previewCount.value > 0 || props.targetSize > 0) ids.push(countId.value)
   if (showError.value) ids.push(errorId.value)
   return ids.length ? ids.join(' ') : undefined
 })
 
+function emitPlayers(list) {
+  emit('update:players', serializePlayers(list))
+}
+
 function emitValidity() {
   emit('isTextAreaValid', validation.value.ok)
   emit('validation', validation.value)
+}
+
+function syncSlotsFromPlayers() {
+  const parsed = parsePlayers(props.players)
+  slotValues.value = Array.from(
+    { length: props.targetSize },
+    (_, i) => parsed[i] || ''
+  )
+}
+
+function commitSlots() {
+  const names = slotValues.value.map((slot) => capitalize(slot)).filter(Boolean)
+  emitPlayers(names)
 }
 
 watch(
@@ -138,12 +199,45 @@ watch(
   { immediate: true }
 )
 
+watch(
+  () => props.targetSize,
+  () => {
+    syncSlotsFromPlayers()
+    commitSlots()
+  },
+  { immediate: true }
+)
+
+watch(
+  () => props.players,
+  (text) => {
+    const fromSlots = serializePlayers(
+      slotValues.value.map(normalizeName).filter(Boolean)
+    )
+    if (text !== fromSlots) syncSlotsFromPlayers()
+  }
+)
+
 const markTouched = () => {
   touched.value = true
 }
 
-const handleInput = (event) => {
-  emit('update:players', event.target.value)
+function onSlotInput(index, value) {
+  const next = [...slotValues.value]
+  next[index] = value
+  slotValues.value = next
+  commitSlots()
+}
+
+function onSlotBlur(index) {
+  markTouched()
+  const current = slotValues.value[index] ?? ''
+  const capped = capitalize(current)
+  if (!capped || capped === current) return
+  const next = [...slotValues.value]
+  next[index] = capped
+  slotValues.value = next
+  commitSlots()
 }
 
 defineExpose({
@@ -151,39 +245,3 @@ defineExpose({
   validation,
 })
 </script>
-
-<style scoped>
-.players-textarea {
-  min-height: 160px;
-  max-height: 220px;
-  overflow-y: auto;
-  field-sizing: auto;
-  background-color: var(--bg-slot);
-  border: 1px solid var(--border-subtle);
-  border-radius: 6px;
-  resize: vertical;
-  transition: min-height 0.2s ease, max-height 0.2s ease;
-}
-
-.players-textarea--expanded {
-  min-height: 280px;
-  max-height: 420px;
-}
-
-.expand-btn {
-  border: 1px solid var(--border-muted);
-  border-radius: 4px;
-  padding: 0.15rem 0.55rem;
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  transition: color 0.15s ease, border-color 0.15s ease;
-}
-
-.expand-btn:hover {
-  color: var(--accent-live);
-  border-color: color-mix(in srgb, var(--accent-live) 45%, transparent);
-}
-</style>

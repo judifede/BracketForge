@@ -1,19 +1,19 @@
 <template>
-  <div class="setup-shell w-full max-w-[440px] mx-auto">
-    <Heading tag="h2" additionalClasses="!text-2xl !h-auto setup-heading" data-tour="setup-heading">
+  <div class="animate-setup-enter w-full max-w-[520px] mx-auto">
+    <Heading tag="h2" additionalClasses="!text-2xl !h-auto mb-[0.35rem]" data-tour="setup-heading">
       Configurar competición
     </Heading>
-    <p class="setup-lead">
+    <p class="-mt-[0.35rem] mb-5 text-[0.95rem] leading-snug text-text-muted">
       Define el torneo, añade participantes y genera el bracket en segundos.
     </p>
 
     <form class="w-full" @submit.prevent="submitForm">
       <section
-        class="form-panel text-white md:px-12 px-6 !py-8 md:box !flex flex-col gap-form_gap"
+        class="panel panel--setup text-white md:px-12 px-6 !py-8 md:box !flex flex-col gap-form_gap"
         data-tour="setup-form"
       >
         <div class="flex flex-col gap-1 text-left">
-          <label for="name" class="!justify-start text-sm font-medium text-white/80">
+          <label for="name" class="!justify-start text-sm font-medium text-white">
             Nombre de la competición
           </label>
           <input
@@ -39,7 +39,7 @@
         </div>
 
         <div class="flex flex-col gap-1 text-left">
-          <label for="format" class="!justify-start text-sm font-medium text-white/80">
+          <label for="format" class="!justify-start text-sm font-medium text-white">
             Formato
           </label>
           <select id="format" name="format" v-model="tournamentFormat" data-tour="setup-format">
@@ -57,60 +57,31 @@
           </select>
         </div>
 
-        <FormPlayers
-          id="players"
-          name="players"
-          v-model:players="playersText"
-          :force-show-errors="submitted"
-          data-tour="setup-players"
-          @isTextAreaValid="handleIsTextAreaValid"
-          @validation="handlePlayersValidation"
-        />
-
-        <div class="flex flex-col gap-2 text-left pt-1" data-tour="setup-presets">
-          <span class="text-sm font-medium text-white/80">Relleno rápido</span>
-
-          <div class="flex flex-wrap items-center gap-2">
+        <div class="flex flex-col items-start gap-[0.45rem] pt-1 text-left" data-tour="setup-presets">
+          <span class="text-sm font-medium text-white">Relleno rápido</span>
+          <div class="flex flex-wrap items-center gap-[0.4rem]">
             <button
               v-for="theme in THEMES"
               :key="theme.id"
               type="button"
-              class="preset-chip"
+              class="chip chip--preset"
               @click="applyThemePreset(theme.id)"
             >
               {{ theme.label }}
             </button>
           </div>
-
-          <div class="flex flex-wrap items-center gap-2">
-            <span class="text-xs text-white/80">Jugadores</span>
-            <div
-              class="inline-flex flex-wrap gap-1"
-              role="group"
-              aria-label="Cantidad de jugadores"
-            >
-              <button
-                v-for="size in SIZES"
-                :key="size"
-                type="button"
-                class="size-chip"
-                :class="{ 'size-chip--active': selectedSize === size }"
-                :aria-pressed="selectedSize === size"
-                @click="selectedSize = size"
-              >
-                {{ size }}
-              </button>
-            </div>
-
-            <button
-              type="button"
-              class="surprise-chip"
-              @click="applySurprisePreset"
-            >
-              Sorpresa
-            </button>
-          </div>
         </div>
+
+        <FormPlayers
+          id="players"
+          name="players"
+          v-model:players="playersText"
+          v-model:target-size="selectedSize"
+          :force-show-errors="submitted"
+          data-tour="setup-players"
+          @isTextAreaValid="handleIsTextAreaValid"
+          @validation="handlePlayersValidation"
+        />
 
         <div
           v-if="submitted && !isFormValid"
@@ -121,9 +92,16 @@
           Revisa los campos marcados antes de crear el bracket.
         </div>
 
-        <div class="m-auto pt-1">
+        <div class="flex flex-wrap items-center justify-center gap-[0.65rem] pt-1">
           <button
-            class="submit-btn"
+            type="button"
+            class="chip chip--surprise"
+            @click="applySurprisePreset"
+          >
+            Sorpresa
+          </button>
+          <button
+            class="btn btn--solid"
             type="submit"
             data-tour="setup-submit"
             :disabled="!isFormValid"
@@ -134,8 +112,13 @@
       </section>
     </form>
 
-    <div class="setup-share" v-if="canShareSetup">
-      <button type="button" class="share-setup-btn" data-tour="setup-share" @click="onShare">
+    <div class="mt-4" v-if="canShareSetup">
+      <button
+        type="button"
+        class="btn btn--live rounded px-[0.85rem] py-[0.4rem] text-[0.85rem] font-semibold"
+        data-tour="setup-share"
+        @click="onShare"
+      >
         Compartir configuración
       </button>
     </div>
@@ -151,7 +134,6 @@ import {
 } from '../../utils/formValidation.js'
 import {
   THEMES,
-  SIZES,
   buildPreset,
   buildSurprisePreset,
 } from '../../data/formPresets.js'
@@ -288,132 +270,3 @@ const submitForm = () => {
   emit('submit-form', result.data)
 }
 </script>
-
-<style scoped>
-.setup-shell {
-  animation: setup-enter 0.45s ease-out;
-}
-
-.setup-lead {
-  margin: -0.35rem 0 1.25rem;
-  color: var(--text-muted);
-  font-size: 0.95rem;
-  line-height: 1.45;
-}
-
-.form-panel {
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--bg-panel) 92%, #243040) 0%,
-    var(--bg-panel) 100%
-  );
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
-}
-
-.preset-chip,
-.size-chip,
-.surprise-chip {
-  border-radius: 4px;
-  padding: 0.35rem 0.75rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  transition:
-    border-color 0.18s ease,
-    color 0.18s ease,
-    background 0.18s ease,
-    transform 0.18s ease;
-}
-
-.preset-chip,
-.size-chip {
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  color: rgba(255, 255, 255, 0.88);
-}
-
-.preset-chip:hover,
-.size-chip:hover {
-  border-color: var(--accent-live);
-  color: var(--accent-live);
-  transform: translateY(-1px);
-}
-
-.size-chip--active {
-  border-color: var(--accent-live);
-  color: var(--accent-live);
-  background: color-mix(in srgb, var(--accent-live) 12%, transparent);
-}
-
-.surprise-chip {
-  border: 1px solid var(--accent-win);
-  color: var(--accent-win);
-}
-
-.surprise-chip:hover {
-  background: color-mix(in srgb, var(--accent-win) 12%, transparent);
-  transform: translateY(-1px);
-}
-
-.submit-btn {
-  display: inline-block;
-  border: 1px solid transparent;
-  border-radius: 4px;
-  padding: 0.55rem 1.15rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  background: var(--accent-win);
-  color: #121212;
-  transition:
-    filter 0.18s ease,
-    transform 0.18s ease,
-    opacity 0.18s ease;
-}
-
-.submit-btn:enabled:hover {
-  filter: brightness(1.08);
-  transform: translateY(-1px);
-}
-
-.submit-btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-  background: color-mix(in srgb, var(--bg-slot) 70%, #64748b);
-  color: rgba(255, 255, 255, 0.55);
-  border-color: var(--border-subtle);
-}
-
-.setup-share {
-  margin-top: 1rem;
-}
-
-.share-setup-btn {
-  border: 1px solid color-mix(in srgb, var(--accent-live) 50%, transparent);
-  color: var(--accent-live);
-  border-radius: 4px;
-  padding: 0.4rem 0.85rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-  transition: background 0.18s ease, border-color 0.18s ease;
-}
-
-.share-setup-btn:hover {
-  background: color-mix(in srgb, var(--accent-live) 12%, transparent);
-  border-color: var(--accent-live);
-}
-
-@keyframes setup-enter {
-  from {
-    opacity: 0;
-    transform: translateY(0.5rem);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-:deep(.setup-heading) {
-  margin-bottom: 0.35rem;
-}
-</style>

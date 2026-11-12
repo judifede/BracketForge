@@ -82,12 +82,19 @@
     @close="closeUpdateModal"
   />
 
+  <ConfirmModal
+    v-model="isReshuffleConfirmVisible"
+    title="Reordenar bracket"
+    message="Reordenar reinicia todos los resultados del bracket. ¿Continuar?"
+    @confirm="confirmReshuffle"
+  />
 </template>
 
 <script setup>
 import Heading from '../assets/Heading.vue'
 import Brackets from './Brackets.vue'
 import PlayersModal from './PlayersModal.vue'
+import ConfirmModal from './ConfirmModal.vue'
 import { useBracket } from '../composables/useBracket.js'
 import { useSession } from '../composables/useSession.js'
 import { parsePlayers } from '../utils/players.js'
@@ -142,11 +149,13 @@ watch(champion, (value, previous) => {
   }
 })
 
+const isReshuffleConfirmVisible = ref(false)
+
 const onReshuffle = () => {
-  const confirmed = window.confirm(
-    'Reordenar reinicia todos los resultados del bracket. ¿Continuar?'
-  )
-  if (!confirmed) return
+  isReshuffleConfirmVisible.value = true
+}
+
+const confirmReshuffle = () => {
   reshuffle()
   toast.info('Bracket reordenado')
 }
