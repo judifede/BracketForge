@@ -8,14 +8,14 @@ import { roundLabel } from './bracket.js'
 export const LAYOUT = {
   slotWidth: 180,
   slotHeight: 36,
+  championSlotHeight: 42,
   matchInnerGap: 1,
   roundGap: 84,
   labelHeight: 44,
   paddingX: 28,
   paddingY: 20,
-  trophySize: 28,
-  trophyGap: 14,
-  winBarWidth: 3,
+  trophySize: 40,
+  trophyGap: 12,
 }
 
 /**
@@ -39,6 +39,56 @@ function baseMatchStep(round0MatchCount) {
 }
 
 /**
+ * Orthogonal elbow that stays on exitY until near the destination, then turns.
+ * Bend sits at 80% of the horizontal gap (near x2).
+ * @param {number} x1
+ * @param {number} y1
+ * @param {number} x2
+ * @param {number} y2
+ * @returns {string}
+ */
+function winnerPathPoints(x1, y1, x2, y2) {
+  const gap = x2 - x1
+  const bendX = x1 + gap * 0.8
+  return `${x1},${y1} ${bendX},${y1} ${bendX},${y2} ${x2},${y2}`
+}
+
+/**
+ * Vertical exit of a match connector: winner slot when decided, else match center.
+ * @param {{
+ *   match: Match,
+ *   centerY: number,
+ *   slot1: { y: number, height: number },
+ *   slot2: { y: number, height: number },
+ * }} positioned
+ * @returns {number}
+ */
+function connectorExitY(positioned) {
+  const { match, centerY, slot1, slot2 } = positioned
+  if (match.winner && match.winner === match.p1) {
+    return slot1.y + slot1.height / 2
+  }
+  if (match.winner && match.winner === match.p2) {
+    return slot2.y + slot2.height / 2
+  }
+  return centerY
+}
+
+/**
+ * Vertical entry into the next match: top slot for even feeders, bottom for odd.
+ * @param {{
+ *   slot1: { y: number, height: number },
+ *   slot2: { y: number, height: number },
+ * }} nextMatch
+ * @param {number} fromMatchIndex
+ * @returns {number}
+ */
+function connectorEntryY(nextMatch, fromMatchIndex) {
+  const slot = fromMatchIndex % 2 === 0 ? nextMatch.slot1 : nextMatch.slot2
+  return slot.y + slot.height / 2
+}
+
+/**
  * @param {Bracket} bracket
  * @returns {{
  *   width: number,
@@ -56,9 +106,10 @@ function baseMatchStep(round0MatchCount) {
  *       slot2: { x: number, y: number, width: number, height: number },
  *     }>
  *   }>,
- *   connectors: Array<{ points: string }>,
+ *   connectors: Array<{ points: string, lit: boolean }>,
  *   trophy: { x: number, y: number, size: number },
  *   championSlot: { x: number, y: number, width: number, height: number } | null,
+ *   championLabel: { x: number, label: string } | null,
  * }}
  */
 export function computeBracketLayout(bracket) {
@@ -71,11 +122,22 @@ export function computeBracketLayout(bracket) {
       connectors: [],
       trophy: { x: 0, y: 0, size: LAYOUT.trophySize },
       championSlot: null,
+      championLabel: null,
     }
   }
 
-  const { slotWidth, slotHeight, matchInnerGap, roundGap, labelHeight, paddingX, paddingY, trophySize, trophyGap } =
-    LAYOUT
+  const {
+    slotWidth,
+    slotHeight,
+    championSlotHeight,
+    matchInnerGap,
+    roundGap,
+    labelHeight,
+    paddingX,
+    paddingY,
+    trophySize,
+    trophyGap,
+  } = LAYOUT
   const mh = matchHeight()
   const step0 = baseMatchStep(rounds[0].length)
 
@@ -117,40 +179,72 @@ export function computeBracketLayout(bracket) {
     positioned.push(roundMatches)
   }
 
-  /** @type {Array<{ points: string }>} */
+  /** @type {Array<{ points: string, lit: boolean }>} */
   const connectors = []
   for (let r = 0; r < positioned.length - 1; r += 1) {
-    for (let m = 0; m < positioned[r].length; m += 1) {
-      const from = positioned[r][m]
-      const to = positioned[r + 1][Math.floor(m / 2)]
-      const x1 = from.x + slotWidth
-      const y1 = from.centerY
-      const x2 = to.x
-      const y2 = to.centerY
-      const midX = x1 + (x2 - x1) / 2
-      connectors.push({
-        points: `${x1},${y1} ${midX},${y1} ${midX},${y2} ${x2},${y2}`,
-      })
+    const destCount = positioned[r + 1].length
+    for (let m = 0; m < destCount; m += 1) {
+      const aIndex = m * 2
+      const bIndex = m * 2 + 1
+      const a = positioned[r][aIndex]
+      const b = positioned[r][bIndex]
+      const to = positioned[r + 1][m]
+      const exitX = a.x + slotWidth
+
+      if (a.match.winner) {
+        connectors.push({
+          points: winnerPathPoints(
+            exitX,
+            connectorExitY(a),
+            to.x,
+            connectorEntryY(to, aIndex)
+          ),
+          lit: true,
+        })
+      }
+      if (b.match.winner) {
+        connectors.push({
+          points: winnerPathPoints(
+            exitX,
+            connectorExitY(b),
+            to.x,
+            connectorEntryY(to, bIndex)
+          ),
+          lit: true,
+        })
+      }
     }
   }
 
   const lastRound = positioned[positioned.length - 1]
   const finalMatch = lastRound[0]
-  const championX = finalMatch.x + slotWidth + trophyGap + trophySize + 8
-  const championY = finalMatch.centerY - slotHeight / 2
+  const championX = finalMatch.x + slotWidth + roundGap
+  const championY = finalMatch.centerY - championSlotHeight / 2
   const trophy = {
-    x: finalMatch.x + slotWidth + trophyGap,
-    y: finalMatch.centerY - trophySize / 2 - slotHeight / 2 - 4,
+    x: championX + (slotWidth - trophySize) / 2,
+    y: championY - trophyGap - trophySize,
     size: trophySize,
+  }
+  const championCenterY = championY + championSlotHeight / 2
+
+  if (finalMatch.match.winner) {
+    connectors.push({
+      points: winnerPathPoints(
+        finalMatch.x + slotWidth,
+        connectorExitY(finalMatch),
+        championX,
+        championCenterY
+      ),
+      lit: true,
+    })
   }
 
   const maxY = Math.max(
     ...positioned.flatMap((rm) => rm.map((m) => m.y + mh)),
-    championY + slotHeight
+    championY + championSlotHeight
   )
 
-  const width =
-    championX + slotWidth + paddingX
+  const width = championX + slotWidth + paddingX
   const height = maxY + paddingY
 
   return {
@@ -167,7 +261,11 @@ export function computeBracketLayout(bracket) {
       x: championX,
       y: championY,
       width: slotWidth,
-      height: slotHeight,
+      height: championSlotHeight,
+    },
+    championLabel: {
+      x: championX,
+      label: 'Campeón',
     },
   }
 }

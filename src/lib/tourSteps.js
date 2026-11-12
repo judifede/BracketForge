@@ -67,7 +67,7 @@ export const TOUR_STEPS = {
       popover: {
         title: 'Barra de controles',
         description:
-          'Queda fija arriba para volver, reordenar, actualizar, compartir o exportar.',
+          'Queda fija arriba para volver, reordenar, actualizar o compartir.',
         side: 'bottom',
       },
     },
@@ -105,19 +105,11 @@ export const TOUR_STEPS = {
       },
     },
     {
-      element: '[data-tour="competition-export"]',
-      popover: {
-        title: 'Exportar PNG',
-        description: 'Descarga una imagen del bracket SVG.',
-        side: 'bottom',
-      },
-    },
-    {
       element: '[data-tour="competition-bracket"]',
       popover: {
         title: 'Bracket interactivo',
         description:
-          'Haz clic en un jugador para que avance. Usa zoom, arrastre o la rueda para moverte.',
+          'Haz clic en un jugador para que avance. Arrastra, usa la rueda (vertical) o Ctrl+rueda (horizontal). Zoom con los botones.',
         side: 'top',
       },
     },

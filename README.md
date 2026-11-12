@@ -29,7 +29,7 @@ Servidor de desarrollo en [http://localhost:4000](http://localhost:4000).
 2. Vista de competición con bracket SVG:
    - Clic en un slot para avanzar o corregir ganador
    - Reordenar semillas / actualizar jugadores (con confirmación)
-   - Pan/zoom, exportar PNG e imprimir
+   - Pan/zoom del bracket
    - Compartir enlace con el estado comprimido en la URL
 3. Persistencia en `localStorage` (`cbg:v1`) de configuración + bracket + vista.
 4. Tour de ayuda (`?`) y panel didáctico de conceptos Vue (botón `</>`).
