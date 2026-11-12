@@ -3,6 +3,7 @@ import {
   buildBracket,
   advanceWinner,
   shuffleSeeds,
+  cloneBracket,
 } from '../lib/bracket.js'
 
 /**
@@ -13,7 +14,7 @@ import {
 export function useBracket(initialPlayers = [], initialBracket = null) {
   const bracket = ref(
     initialBracket && Array.isArray(initialBracket.rounds)
-      ? structuredClone(initialBracket)
+      ? cloneBracket(initialBracket)
       : buildBracket(initialPlayers)
   )
 
@@ -37,7 +38,7 @@ export function useBracket(initialPlayers = [], initialBracket = null) {
    */
   function restore(next) {
     if (!next || !Array.isArray(next.rounds)) return
-    bracket.value = structuredClone(next)
+    bracket.value = cloneBracket(next)
   }
 
   function reshuffle() {

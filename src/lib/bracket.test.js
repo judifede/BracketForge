@@ -5,6 +5,8 @@ import {
   shuffleSeeds,
   nextPowerOfTwo,
   roundLabel,
+  rebuildBracketFromWinners,
+  collectContestedWinners,
   BYE,
 } from './bracket.js'
 
@@ -76,6 +78,20 @@ describe('advanceWinner', () => {
     const bracket = buildBracket(['Ana', 'Bob'])
     expect(() => advanceWinner(bracket, 'r0-m0', 'Zed')).toThrow()
     expect(() => advanceWinner(bracket, 'missing', 'Ana')).toThrow()
+  })
+})
+
+describe('rebuildBracketFromWinners', () => {
+  it('restores contested winners from a flat list', () => {
+    let bracket = buildBracket(['Ana', 'Bob', 'Carla', 'Dan'])
+    bracket = advanceWinner(bracket, 'r0-m0', 'Ana')
+    bracket = advanceWinner(bracket, 'r0-m1', 'Dan')
+    const winners = collectContestedWinners(bracket)
+    const restored = rebuildBracketFromWinners(
+      ['Ana', 'Bob', 'Carla', 'Dan'],
+      winners
+    )
+    expect(restored).toEqual(bracket)
   })
 })
 

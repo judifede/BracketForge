@@ -111,10 +111,11 @@ export function buildBracket(players) {
 
 /**
  * Deep-clone a bracket (plain data).
+ * Works through Vue reactive Proxies (unlike structuredClone).
  * @param {Bracket} bracket
  * @returns {Bracket}
  */
-function cloneBracket(bracket) {
+export function cloneBracket(bracket) {
   return {
     seeds: [...bracket.seeds],
     rounds: bracket.rounds.map((round) =>
@@ -200,4 +201,59 @@ export function roundLabel(roundIndex, totalRounds, matchCount) {
   if (roundIndex === totalRounds - 1) return 'Final'
   if (roundIndex === totalRounds - 2 && totalRounds >= 2) return 'Semifinal'
   return `Ronda de ${matchCount * 2}`
+}
+
+/**
+ * Flatten match winners in round order.
+ * Bye / incomplete matches yield null (reconstructed by buildBracket).
+ * @param {Bracket} bracket
+ * @returns {(string|null)[]}
+ */
+export function collectContestedWinners(bracket) {
+  /** @type {(string|null)[]} */
+  const winners = []
+  if (!bracket?.rounds) return winners
+
+  for (const round of bracket.rounds) {
+    for (const match of round) {
+      if (match.p1 == null || match.p2 == null) {
+        winners.push(null)
+      } else {
+        winners.push(match.winner ?? null)
+      }
+    }
+  }
+
+  while (winners.length > 0 && winners[winners.length - 1] == null) {
+    winners.pop()
+  }
+  return winners
+}
+
+/**
+ * Rebuild a bracket from seed order and contested winners (round order).
+ * @param {string[]} seeds
+ * @param {(string|null)[]} winnerNames
+ * @returns {Bracket}
+ */
+export function rebuildBracketFromWinners(seeds, winnerNames = []) {
+  let next = buildBracket(seeds)
+  const names = Array.isArray(winnerNames) ? winnerNames : []
+  let i = 0
+
+  for (let r = 0; r < next.rounds.length; r += 1) {
+    for (let m = 0; m < next.rounds[r].length; m += 1) {
+      const winner = names[i] ?? null
+      i += 1
+      if (!winner) continue
+
+      const match = next.rounds[r][m]
+      if (match.p1 == null || match.p2 == null) continue
+      if (match.winner === winner) continue
+
+      next = advanceWinner(next, match.id, winner)
+    }
+  }
+
+  return next
 }

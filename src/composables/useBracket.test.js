@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { reactive } from 'vue'
 import { useBracket } from './useBracket.js'
 import { buildBracket } from '../lib/bracket.js'
 
@@ -17,6 +18,20 @@ describe('useBracket smoke', () => {
     restore(snapshot)
     expect(bracket.value.rounds[0][0].winner).toBe('Ana')
     expect(champion.value).toBe('Ana')
+  })
+
+  it('accepts Vue reactive proxies without DataCloneError', () => {
+    const plain = buildBracket(['Ana', 'Bob'])
+    plain.rounds[0][0].winner = 'Ana'
+    const proxied = reactive(plain)
+
+    expect(() => useBracket([], proxied)).not.toThrow()
+    const { bracket, champion, restore } = useBracket([], proxied)
+    expect(bracket.value.rounds[0][0].winner).toBe('Ana')
+    expect(champion.value).toBe('Ana')
+
+    expect(() => restore(proxied)).not.toThrow()
+    expect(bracket.value.seeds).toEqual(['Ana', 'Bob'])
   })
 
   it('advances winners without throwing to the UI layer', () => {
