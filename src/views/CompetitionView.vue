@@ -7,7 +7,7 @@
     @bracket-change="onBracketChange"
     @competition-data-change="onCompetitionDataChange"
   />
-  <p v-else class="text-[var(--accent-live)]">Cargando competición…</p>
+  <p v-else class="text-live">Cargando competición…</p>
 </template>
 
 <script setup>

@@ -2,7 +2,7 @@
   <component
     :is="tag"
     :class="[
-      'box md:h-[70px] text-2xl sm:text-3xl md:text-4xl text-[var(--accent-win,#f5c518)]',
+      'box md:h-[70px] text-2xl sm:text-3xl md:text-4xl text-win',
       additionalClasses,
     ]"
   >
@@ -31,5 +31,3 @@ defineProps({
   },
 })
 </script>
-
-<style scoped></style>

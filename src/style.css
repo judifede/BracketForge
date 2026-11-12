@@ -4,22 +4,6 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer components {
-  .box {
-    @apply inline-block py-3 px-6 w-full;
-  }
-  .border-rounded-white {
-    @apply border rounded-2xl border-white;
-  }
-  .box-input {
-    @apply inline-block py-3 px-6 rounded-2xl w-full;
-  }
-
-  .container-label {
-    @apply !flex justify-between items-center gap-2 !w-full font-medium;
-  }
-}
-
 :root {
   color-scheme: dark;
   color: #ffffff;
@@ -52,157 +36,584 @@
   font-family: var(--font-body);
 }
 
-body {
-  margin: 0;
-  min-width: 320px;
-  min-height: 100vh;
-  overflow-x: hidden;
-  font-family: var(--font-body);
-}
+@layer base {
+  body {
+    @apply m-0 min-w-[320px] min-h-screen overflow-x-hidden font-body;
+  }
 
-#app {
-  max-width: min(1280px, 100%);
-  margin: 0 auto;
-  padding: 1rem;
-  text-align: center;
-  overflow-x: clip;
-}
-
-@media (min-width: 640px) {
   #app {
-    padding: 2rem;
+    @apply mx-auto text-center overflow-x-clip;
+    max-width: min(1280px, 100%);
+    padding: 1rem;
+  }
+
+  @media (min-width: 640px) {
+    #app {
+      padding: 2rem;
+    }
+  }
+
+  ::placeholder {
+    @apply !font-medium !text-white/80;
+  }
+
+  label {
+    @apply text-white container-label;
+  }
+
+  input,
+  select {
+    @apply box-input text-white font-body bg-slot border border-subtle;
+  }
+
+  select {
+    @apply border-r-[16px] border-transparent;
+  }
+
+  button {
+    @apply font-body;
+  }
+
+  button:disabled {
+    @apply opacity-50 cursor-not-allowed;
   }
 }
 
-.no-valid {
-  @apply border border-red-400;
+@layer components {
+  .box {
+    @apply inline-block py-3 px-6 w-full;
+  }
+
+  .border-rounded-white {
+    @apply border rounded-2xl border-white;
+  }
+
+  .box-input {
+    @apply inline-block py-3 px-6 rounded-2xl w-full;
+  }
+
+  .container-label {
+    @apply !flex justify-between items-center gap-2 !w-full font-medium;
+  }
+
+  .no-valid {
+    @apply border border-red-400;
+  }
+
+  .error-message {
+    @apply text-red-500 text-balance;
+  }
+
+  /* Shared panel / buttons / chips / modals */
+  .panel {
+    @apply rounded-lg border border-subtle bg-panel;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+  }
+
+  .panel--setup {
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg-panel) 92%, #243040) 0%,
+      var(--bg-panel) 100%
+    );
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center rounded font-semibold transition duration-150;
+    border: 1px solid transparent;
+    background: transparent;
+    padding: 0.5rem 1rem;
+  }
+
+  .btn--ghost {
+    @apply border-subtle;
+    border-color: var(--border-subtle);
+    background: transparent;
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .btn--ghost:hover:enabled {
+    border-color: color-mix(in srgb, var(--accent-live) 55%, transparent);
+    @apply text-live;
+    background: color-mix(in srgb, var(--accent-live) 10%, transparent);
+  }
+
+  .btn--live {
+    border-color: color-mix(in srgb, var(--accent-live) 50%, transparent);
+    @apply text-live;
+  }
+
+  .btn--live:hover:enabled {
+    background: color-mix(in srgb, var(--accent-live) 12%, transparent);
+    @apply border-live;
+  }
+
+  .btn--primary {
+    border-color: color-mix(in srgb, var(--accent-win) 55%, transparent);
+    background: color-mix(in srgb, var(--bg-slot) 80%, #1a1a1a);
+    @apply text-win;
+  }
+
+  .btn--primary:hover:enabled {
+    background: color-mix(in srgb, var(--accent-win) 12%, transparent);
+    @apply border-win;
+  }
+
+  .btn--solid {
+    @apply border border-transparent rounded font-bold tracking-wide bg-win text-[#121212];
+    padding: 0.55rem 1.15rem;
+    transition:
+      filter 0.18s ease,
+      transform 0.18s ease,
+      opacity 0.18s ease;
+  }
+
+  .btn--solid:enabled:hover {
+    filter: brightness(1.08);
+    transform: translateY(-1px);
+  }
+
+  .btn--solid:disabled,
+  .btn--primary:disabled {
+    @apply cursor-not-allowed border-subtle text-white/50;
+    opacity: 0.45;
+    background: color-mix(in srgb, var(--bg-slot) 70%, #64748b);
+  }
+
+  .btn--toolbar {
+    @apply px-2.5 py-1 text-xs sm:px-3.5 sm:py-1.5 sm:text-sm font-medium;
+  }
+
+  .btn--toolbar.btn--ghost {
+    border-color: rgba(255, 255, 255, 0.22);
+    @apply text-white/80;
+  }
+
+  .btn--toolbar.btn--ghost:hover:enabled {
+    border-color: rgba(255, 255, 255, 0.45);
+    @apply text-white;
+    background: transparent;
+  }
+
+  .btn--toolbar.btn--live {
+    border-color: color-mix(in srgb, var(--accent-live) 55%, transparent);
+  }
+
+  .btn--toolbar.btn--primary {
+    border-color: color-mix(in srgb, var(--accent-win) 60%, transparent);
+    background: transparent;
+  }
+
+  .btn--toolbar:disabled {
+    @apply cursor-not-allowed border-subtle text-white/50;
+    opacity: 0.45;
+    background: color-mix(in srgb, var(--bg-slot) 70%, #64748b);
+  }
+
+  .chip {
+    @apply rounded border px-[0.55rem] py-[0.2rem] text-[0.8rem] font-semibold;
+    border-color: rgba(255, 255, 255, 0.35);
+    color: rgba(255, 255, 255, 0.88);
+    transition:
+      border-color 0.18s ease,
+      color 0.18s ease,
+      background 0.18s ease,
+      transform 0.18s ease;
+  }
+
+  .chip:hover {
+    @apply border-live text-live;
+  }
+
+  .chip--preset {
+    @apply bg-slot px-3 py-[0.35rem] text-sm;
+  }
+
+  .chip--preset:hover {
+    transform: translateY(-1px);
+  }
+
+  .chip--active {
+    @apply border-live text-live;
+    background: color-mix(in srgb, var(--accent-live) 12%, transparent);
+  }
+
+  .chip--surprise {
+    @apply border-win text-win bg-transparent px-3 py-[0.35rem] text-sm;
+  }
+
+  .chip--surprise:hover {
+    background: color-mix(in srgb, var(--accent-win) 12%, transparent);
+    transform: translateY(-1px);
+  }
+
+  .modal-overlay {
+    background: rgba(5, 8, 12, 0.72) !important;
+    backdrop-filter: blur(2px);
+  }
+
+  .modal-overlay--soft {
+    background: rgba(5, 8, 12, 0.55) !important;
+    backdrop-filter: none;
+  }
+
+  .modal-content-center {
+    @apply flex items-center justify-center;
+  }
+
+  .modal-content-end {
+    @apply ml-auto h-full;
+  }
+
+  /* Help toolbar */
+  .help-btn {
+    @apply inline-flex items-center justify-center w-9 h-9 rounded font-bold text-base leading-none text-live;
+    border: 1px solid color-mix(in srgb, var(--accent-live) 45%, transparent);
+    background: color-mix(in srgb, var(--bg-panel) 88%, #000);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    transition:
+      transform 0.15s ease,
+      background 0.15s ease,
+      border-color 0.15s ease;
+  }
+
+  .help-btn:hover {
+    transform: translateY(-1px);
+    @apply border-live;
+    background: color-mix(in srgb, var(--accent-live) 14%, var(--bg-panel));
+  }
+
+  /* Lesson drawer */
+  .lesson-drawer {
+    @apply w-[min(420px,94vw)] h-screen ml-auto overflow-y-auto text-left animate-drawer-in;
+    padding: 1.25rem 1.25rem 2rem;
+    background: linear-gradient(180deg, #18222b 0%, var(--bg-panel) 100%);
+    border-left: 1px solid var(--border-subtle);
+    box-shadow: -16px 0 40px rgba(0, 0, 0, 0.35);
+  }
+
+  .lesson-card {
+    @apply rounded-md border border-subtle px-[0.9rem] py-[0.85rem];
+    background: color-mix(in srgb, var(--bg-slot) 88%, #101820);
+  }
+
+  /* Competition chrome */
+  .bracket-toolbar {
+    @apply flex flex-wrap items-center justify-center gap-2 sm:gap-3 md:gap-4;
+    @apply mx-auto w-full max-w-5xl px-2 py-2 sm:px-3 sm:py-2.5;
+    @apply sticky top-2 z-20 rounded-md border border-subtle;
+    background: linear-gradient(
+      180deg,
+      rgba(28, 36, 44, 0.97) 0%,
+      rgba(18, 24, 30, 0.95) 100%
+    );
+    backdrop-filter: blur(6px);
+  }
+
+  .toolbar-format {
+    @apply m-0 text-[0.65rem] sm:text-xs font-medium uppercase tracking-[0.1em] sm:tracking-[0.12em] text-white/80;
+  }
+
+  .toolbar-format span {
+    @apply ml-1.5 sm:ml-2 text-xs sm:text-sm normal-case tracking-normal font-semibold text-live;
+  }
+
+  .champion-chip {
+    @apply m-0 text-[0.65rem] sm:text-xs font-medium uppercase tracking-[0.1em] sm:tracking-[0.12em] animate-champion-pop;
+    padding: 0.2rem 0.55rem;
+    border-radius: 4px;
+    border: 1px solid color-mix(in srgb, var(--accent-win) 45%, transparent);
+    background: color-mix(in srgb, var(--accent-win) 12%, transparent);
+    @apply text-win;
+  }
+
+  .champion-chip strong {
+    @apply ml-1.5 sm:ml-2 text-xs sm:text-sm normal-case tracking-normal font-semibold;
+  }
+
+  .bracket-stage {
+    @apply w-full overflow-x-auto px-1 py-3 sm:px-4 sm:py-5 rounded-[10px];
+    background:
+      radial-gradient(
+        ellipse 70% 55% at 85% 45%,
+        rgba(245, 197, 24, 0.07) 0%,
+        transparent 55%
+      ),
+      radial-gradient(
+        ellipse 80% 60% at 20% 0%,
+        rgba(45, 212, 191, 0.12) 0%,
+        transparent 55%
+      ),
+      linear-gradient(180deg, #152028 0%, #0d141a 48%, #090e12 100%);
+    border: 1px solid color-mix(in srgb, var(--accent-live) 22%, #262626);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      0 0 0 1px rgba(0, 0, 0, 0.25);
+  }
+
+  /* Brackets chrome */
+  .bracket-scroll {
+    @apply w-full max-w-full overflow-auto;
+    scrollbar-color: rgba(45, 212, 191, 0.35) transparent;
+    max-height: min(70vh, 820px);
+    cursor: grab;
+    touch-action: none;
+  }
+
+  .bracket-scroll.is-panning {
+    cursor: grabbing;
+  }
+
+  .zoom-controls {
+    @apply inline-flex items-center gap-[0.3rem] rounded-md border border-subtle;
+    padding: 0.2rem 0.3rem;
+    background: linear-gradient(
+      180deg,
+      rgba(28, 36, 44, 0.96) 0%,
+      rgba(18, 24, 30, 0.94) 100%
+    );
+    backdrop-filter: blur(6px);
+  }
+
+  .zoom-btn {
+    @apply min-w-[1.7rem] h-[1.7rem] rounded border font-bold leading-none bg-transparent;
+    border-color: rgba(255, 255, 255, 0.22);
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .zoom-btn:hover {
+    @apply border-live text-live;
+    background: color-mix(in srgb, var(--accent-live) 12%, transparent);
+  }
+
+  .zoom-btn--wide {
+    @apply px-[0.45rem] text-[0.7rem] tracking-wider uppercase font-semibold;
+  }
+
+  .scroll-hint {
+    @apply m-0 pointer-events-none rounded border text-live font-semibold uppercase animate-scroll-hint-fade;
+    padding: 0.28rem 0.5rem;
+    border-color: rgba(45, 212, 191, 0.3);
+    background: rgba(11, 17, 22, 0.88);
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+  }
+
+  /* Brackets SVG theme (raw fill/stroke allowed) */
+  .round-label-bar {
+    fill: url(#cbg-label-bar);
+    stroke: rgba(45, 212, 191, 0.18);
+    stroke-width: 1;
+  }
+
+  .round-label-bar--final {
+    fill: color-mix(in srgb, var(--accent-live) 28%, #1a242c);
+    stroke: color-mix(in srgb, var(--accent-live) 45%, transparent);
+  }
+
+  .round-label-bar--champion {
+    fill: color-mix(in srgb, var(--accent-win) 28%, #2a2418);
+    stroke: color-mix(in srgb, var(--accent-win) 50%, transparent);
+  }
+
+  .round-label-text {
+    @apply pointer-events-none font-bold tracking-[0.14em];
+    fill: rgba(255, 255, 255, 0.9);
+    font-size: 12px;
+  }
+
+  .round-label-text--final {
+    fill: #5eead4;
+  }
+
+  .round-label-text--champion {
+    fill: #ffd84d;
+    font-weight: 800;
+  }
+
+  .bracket-connector {
+    stroke: rgba(94, 234, 212, 0.22);
+    stroke-width: 2.25;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+    transition:
+      stroke 0.25s ease,
+      stroke-width 0.25s ease;
+  }
+
+  .bracket-connector--lit {
+    stroke: #f5c518;
+    stroke-width: 2.75;
+    filter: drop-shadow(0 0 3px color-mix(in srgb, #f5c518 55%, transparent));
+  }
+
+  .match-frame {
+    fill: none;
+    stroke: rgba(45, 212, 191, 0.22);
+    stroke-width: 1.25;
+    pointer-events: none;
+  }
+
+  .slot-rect {
+    fill: url(#cbg-slot-idle);
+    stroke: none;
+    transition:
+      fill 0.18s ease,
+      opacity 0.18s ease;
+  }
+
+  .slot-divider {
+    stroke: rgba(45, 212, 191, 0.2);
+    stroke-width: 1;
+    pointer-events: none;
+  }
+
+  .slot-text {
+    fill: #f8fafc;
+    pointer-events: none;
+  }
+
+  .winner-frame {
+    stroke: var(--accent-win);
+    stroke-width: 2.75;
+    stroke-linejoin: miter;
+    stroke-linecap: butt;
+    pointer-events: none;
+  }
+
+  .slot-empty .slot-rect {
+    fill: #141a1f;
+  }
+
+  .slot-empty .slot-text {
+    fill: #fff;
+  }
+
+  .slot-pending .slot-rect {
+    fill: url(#cbg-slot-pending);
+  }
+
+  .slot-selectable:hover .slot-rect,
+  .slot-selectable:focus .slot-rect {
+    fill: #2f4550;
+  }
+
+  .slot-selectable:hover .slot-text,
+  .slot-selectable:focus .slot-text {
+    fill: #5eead4;
+  }
+
+  .slot-winner .slot-rect {
+    fill: url(#cbg-slot-winner);
+  }
+
+  .slot-winner .slot-text {
+    fill: #fff3c4;
+    font-weight: 700;
+  }
+
+  .slot-loser {
+    opacity: 0.38;
+  }
+
+  .slot-loser .slot-text {
+    fill: rgba(255, 255, 255, 0.55);
+  }
+
+  .slot-selectable {
+    outline: none;
+  }
+
+  .slot-selectable:focus,
+  .slot-selectable:focus-visible {
+    outline: none;
+  }
+
+  .slot-selectable:focus-visible .slot-rect {
+    stroke: var(--accent-live);
+    stroke-width: 1.75;
+  }
+
+  .champion-trophy {
+    opacity: 0.72;
+    transition:
+      opacity 0.3s ease,
+      filter 0.3s ease;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.45));
+  }
+
+  .champion-trophy--lit {
+    @apply opacity-100 animate-trophy-pulse;
+    filter: drop-shadow(0 0 10px color-mix(in srgb, var(--accent-win) 70%, transparent));
+  }
+
+  .champion-slot {
+    fill: #151b22;
+    stroke: color-mix(in srgb, var(--accent-win) 45%, #3a4550);
+    stroke-width: 1.75;
+  }
+
+  .champion-slot--filled {
+    fill: url(#cbg-champ-fill);
+    stroke: #f5c518;
+    stroke-width: 2.25;
+    filter: drop-shadow(0 0 6px color-mix(in srgb, #f5c518 35%, transparent));
+  }
+
+  .champion-slot-inner {
+    fill: none;
+    stroke: color-mix(in srgb, var(--accent-win) 28%, transparent);
+    stroke-width: 1;
+    pointer-events: none;
+  }
+
+  .champion-slot-inner--filled {
+    stroke: color-mix(in srgb, var(--accent-win) 55%, transparent);
+  }
+
+  .champion-text {
+    fill: rgba(255, 255, 255, 0.4);
+    pointer-events: none;
+  }
+
+  .champion-text--filled {
+    fill: #ffe566;
+    font-weight: 800;
+  }
 }
 
-::placeholder {
-  @apply !font-medium !text-white/80;
-}
-
-.error-message {
-  @apply text-red-500 text-balance;
-}
-
-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-label {
-  @apply text-white container-label;
-}
-
-input,
-select {
-  @apply box-input text-white;
-  background-color: var(--bg-slot);
-  border: 1px solid var(--border-subtle);
-  font-family: var(--font-body);
-}
-
-select {
-  @apply border-r-[16px] border-transparent;
-}
-
-button {
-  font-family: var(--font-body);
-}
-
-/* driver.js esports theme */
+/* driver.js esports theme — global overrides; @apply where possible */
 .cbg-driver-popover.driver-popover {
-  background: var(--bg-panel);
-  color: #fff;
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
+  @apply bg-panel text-white border border-subtle rounded-lg;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
   max-width: 320px;
 }
 
 .cbg-driver-popover .driver-popover-title {
-  font-family: var(--font-display);
-  color: var(--accent-win);
-  font-size: 1rem;
+  @apply font-display text-win text-base;
 }
 
 .cbg-driver-popover .driver-popover-description {
-  color: var(--text-muted);
-  line-height: 1.45;
+  @apply text-text-muted leading-snug;
 }
 
 .cbg-driver-popover .driver-popover-progress-text {
-  color: var(--accent-live);
-  font-size: 0.75rem;
+  @apply text-live text-xs;
 }
 
 .cbg-driver-popover .driver-popover-next-btn,
 .cbg-driver-popover .driver-popover-done-btn {
-  background: var(--accent-win) !important;
-  color: #121212 !important;
-  border: none !important;
+  @apply !bg-win !text-[#121212] !border-none font-bold;
   text-shadow: none !important;
-  font-weight: 700;
 }
 
 .cbg-driver-popover .driver-popover-prev-btn {
-  background: transparent !important;
-  color: var(--accent-live) !important;
+  @apply !bg-transparent !text-live font-medium;
   border: 1px solid color-mix(in srgb, var(--accent-live) 50%, transparent) !important;
   text-shadow: none !important;
 }
 
 .cbg-driver-popover .driver-popover-close-btn {
-  color: rgba(255, 255, 255, 0.7);
-}
-
-@media print {
-  body {
-    background: #fff !important;
-    color: #000 !important;
-  }
-
-  #app {
-    max-width: none;
-    padding: 0;
-  }
-
-  .no-print,
-  .help-toolbar,
-  .zoom-controls,
-  .scroll-hint,
-  .bracket-toolbar,
-  footer,
-  .winner-hint,
-  .champion-banner {
-    display: none !important;
-  }
-
-  .bracket-stage {
-    border: none !important;
-    box-shadow: none !important;
-    background: #fff !important;
-  }
-
-  .bracket-scroll {
-    max-height: none !important;
-    overflow: visible !important;
-  }
-
-  .slot-text,
-  .round-label-text,
-  .champion-text {
-    fill: #111 !important;
-  }
-
-  .slot-rect,
-  .champion-slot {
-    fill: #f4f4f4 !important;
-    stroke: #333 !important;
-  }
-
-  .win-bar {
-    fill: #c9a227 !important;
-  }
+  @apply text-white/70;
 }

@@ -1,20 +1,19 @@
 <template>
   <div class="app-shell flex min-h-[calc(100vh-2rem)] flex-col sm:min-h-[calc(100vh-4rem)]">
     <HelpToolbar
-      class="no-print"
       @start-tour="startTour"
       @open-vue-lesson="vueLessonOpen = true"
     />
 
     <main class="flex flex-1 flex-col items-center gap-6 sm:gap-10">
-      <Heading tag="h1" additionalClasses="brand-heading" data-tour="app-brand">
+      <Heading tag="h1" additionalClasses="font-display tracking-wide" data-tour="app-brand">
         BracketForge
       </Heading>
 
       <RouterView />
     </main>
 
-    <footer class="mt-auto pt-10 pb-2 text-center no-print">
+    <footer class="mt-auto pt-10 pb-2 text-center">
       <a
         href="http://judifede.github.io/"
         target="_blank"
@@ -111,10 +110,3 @@ function startTour() {
   tour.drive()
 }
 </script>
-
-<style scoped>
-.brand-heading {
-  font-family: var(--font-display);
-  letter-spacing: 0.01em;
-}
-</style>
