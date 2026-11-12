@@ -71,7 +71,7 @@ export const VUE_LESSONS = {
         title: 'Título computado',
         concept: 'computed',
         body:
-          'El título combina tipo y nombre con un `computed`: se recalcula solo cuando cambian esas dependencias, sin watchers manuales.',
+          'El título muestra el nombre de la competición con un `computed`: se recalcula solo cuando cambia esa dependencia, sin watchers manuales.',
       },
       {
         title: 'Modal y toasts',

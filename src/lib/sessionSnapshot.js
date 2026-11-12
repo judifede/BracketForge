@@ -10,7 +10,6 @@ export const SHARE_PREFIX = 'v1.'
 /**
  * @typedef {Object} CompetitionData
  * @property {string} tournamentName
- * @property {string} tournamentType
  * @property {string} tournamentFormat
  * @property {string[]} tournamentPlayers
  */
@@ -37,7 +36,6 @@ function isCompetitionData(value) {
   if (!value || typeof value !== 'object') return false
   const data = /** @type {Record<string, unknown>} */ (value)
   if (typeof data.tournamentName !== 'string') return false
-  if (typeof data.tournamentType !== 'string') return false
   if (typeof data.tournamentFormat !== 'string') return false
   const players = Array.isArray(data.tournamentPlayers)
     ? data.tournamentPlayers
@@ -89,7 +87,6 @@ export function validateSnapshot(raw) {
     const rawData = /** @type {Record<string, unknown>} */ (obj.competitionData)
     competitionData = {
       tournamentName: String(rawData.tournamentName),
-      tournamentType: String(rawData.tournamentType),
       tournamentFormat: String(rawData.tournamentFormat),
       tournamentPlayers: Array.isArray(rawData.tournamentPlayers)
         ? rawData.tournamentPlayers.map(String)

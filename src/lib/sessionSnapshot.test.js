@@ -14,7 +14,6 @@ import { buildBracket } from './bracket.js'
 
 const sampleCompetition = {
   tournamentName: 'Copa Pixel',
-  tournamentType: 'Copa',
   tournamentFormat: 'Eliminación simple',
   tournamentPlayers: ['NovaStrike', 'PixelWolf', 'ShadowByte', 'LagKiller'],
 }
@@ -39,6 +38,20 @@ describe('sessionSnapshot', () => {
         bracket: null,
       })
     ).toBeNull()
+  })
+
+  it('strips legacy tournamentType from competitionData', () => {
+    const snap = validateSnapshot({
+      v: 1,
+      view: 'setup',
+      competitionData: {
+        ...sampleCompetition,
+        tournamentType: 'Copa',
+      },
+      bracket: null,
+    })
+    expect(snap?.competitionData).toEqual(sampleCompetition)
+    expect(snap?.competitionData).not.toHaveProperty('tournamentType')
   })
 
   it('round-trips share payload compression', () => {

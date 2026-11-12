@@ -12,15 +12,7 @@ export const TOUR_STEPS = {
       popover: {
         title: 'Configura tu torneo',
         description:
-          'Desde aquí defines tipo, nombre, formato y participantes antes de generar el bracket.',
-        side: 'bottom',
-      },
-    },
-    {
-      element: '[data-tour="setup-type"]',
-      popover: {
-        title: 'Tipo de competición',
-        description: 'Elige Torneo, Copa o Liga. Es una etiqueta para el título.',
+          'Desde aquí defines nombre, formato y participantes antes de generar el bracket.',
         side: 'bottom',
       },
     },

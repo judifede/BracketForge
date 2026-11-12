@@ -13,17 +13,6 @@
         data-tour="setup-form"
       >
         <div class="flex flex-col gap-1 text-left">
-          <label for="type" class="!justify-start text-sm font-medium text-white/80">
-            Tipo de competición
-          </label>
-          <select id="type" name="type" v-model="tournamentType" data-tour="setup-type">
-            <option value="Torneo">Torneo</option>
-            <option value="Copa">Copa</option>
-            <option value="Liga">Liga</option>
-          </select>
-        </div>
-
-        <div class="flex flex-col gap-1 text-left">
           <label for="name" class="!justify-start text-sm font-medium text-white/80">
             Nombre de la competición
           </label>
@@ -182,7 +171,6 @@ const emit = defineEmits(['submit-form'])
 const { getShareUrl, setCompetitionData } = useSession()
 
 const tournamentName = ref('')
-const tournamentType = ref('Torneo')
 const tournamentFormat = ref('Eliminación simple')
 const playersText = ref('')
 
@@ -195,7 +183,6 @@ const selectedSize = ref(8)
 function applyInitial(data) {
   if (!data) return
   tournamentName.value = data.tournamentName ?? ''
-  tournamentType.value = data.tournamentType ?? 'Torneo'
   tournamentFormat.value =
     migrateFormat(data.tournamentFormat) ?? 'Eliminación simple'
   if (Array.isArray(data.tournamentPlayers)) {
@@ -216,7 +203,6 @@ function migrateFormat(format) {
 }
 
 function applyFilledPreset(preset) {
-  tournamentType.value = preset.tournamentType
   tournamentName.value = preset.tournamentName
   tournamentFormat.value = migrateFormat(preset.tournamentFormat) || 'Eliminación simple'
   playersText.value = preset.tournamentPlayers
@@ -285,7 +271,6 @@ const submitForm = () => {
 
   const result = validateCompetitionForm({
     tournamentName: tournamentName.value,
-    tournamentType: tournamentType.value,
     tournamentFormat: tournamentFormat.value,
     tournamentPlayers: playersText.value,
   })

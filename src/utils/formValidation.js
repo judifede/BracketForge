@@ -22,7 +22,6 @@ export function validateTournamentName(name) {
  * Validate the full setup form payload.
  * @param {{
  *   tournamentName?: unknown,
- *   tournamentType?: unknown,
  *   tournamentFormat?: unknown,
  *   tournamentPlayers?: string|string[],
  *   maxPlayers?: number,
@@ -32,7 +31,6 @@ export function validateTournamentName(name) {
  *   error: string|null,
  *   data: {
  *     tournamentName: string,
- *     tournamentType: string,
  *     tournamentFormat: string,
  *     tournamentPlayers: string[],
  *   } | null,
@@ -63,7 +61,6 @@ export function validateCompetitionForm(fields) {
     error: null,
     data: {
       tournamentName: nameResult.value,
-      tournamentType: String(fields.tournamentType || 'Torneo'),
       tournamentFormat: String(fields.tournamentFormat || 'Eliminación simple'),
       tournamentPlayers: playersResult.players,
     },

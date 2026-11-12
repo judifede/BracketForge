@@ -32,15 +32,10 @@ describe('formPresets datasets', () => {
     for (const theme of THEMES) {
       expect(theme.label).toBeTruthy()
       expect(theme.nameTemplates.length).toBeGreaterThanOrEqual(1)
-      expect(theme.typeOptions.length).toBeGreaterThanOrEqual(1)
       expect(theme.playerPool.length).toBeGreaterThanOrEqual(16)
 
       const unique = new Set(theme.playerPool.map((name) => name.toLowerCase()))
       expect(unique.size).toBe(theme.playerPool.length)
-
-      for (const type of theme.typeOptions) {
-        expect(['Torneo', 'Copa', 'Liga']).toContain(type)
-      }
     }
   })
 })
@@ -69,9 +64,9 @@ describe('buildPreset', () => {
     const random = sequenceRandom([0, 0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8])
     const preset = buildPreset({ themeId: 'esports', size: 4, random })
 
-    expect(theme.typeOptions).toContain(preset.tournamentType)
     expect(theme.nameTemplates).toContain(preset.tournamentName)
     expect(preset.tournamentFormat).toBe('Eliminación simple')
+    expect(preset).not.toHaveProperty('tournamentType')
 
     const lines = preset.tournamentPlayers.split('\n')
     expect(lines).toHaveLength(4)
@@ -105,17 +100,16 @@ describe('buildSurprisePreset', () => {
     const random = sequenceRandom([
       0.1, // theme
       0.5, // size
-      0.2, // type
-      0.3, // name
-      0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
+      // buildPreset: shuffle players + name pick
+      0.2, 0.3, 0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
     ])
     const surprise = buildSurprisePreset({ random })
     const theme = getThemeById(surprise.themeId)
 
     expect(SIZES).toContain(surprise.size)
-    expect(theme.typeOptions).toContain(surprise.tournamentType)
     expect(theme.nameTemplates).toContain(surprise.tournamentName)
     expect(surprise.tournamentFormat).toBe('Eliminación simple')
+    expect(surprise).not.toHaveProperty('tournamentType')
 
     const lines = surprise.tournamentPlayers.split('\n')
     expect(lines).toHaveLength(surprise.size)

@@ -1,13 +1,10 @@
 import { shuffle } from '../utils/shuffle.js'
 
-/** @typedef {'Torneo' | 'Copa' | 'Liga'} TournamentType */
-
 /**
  * @typedef {object} FormTheme
  * @property {string} id
  * @property {string} label
  * @property {string[]} nameTemplates
- * @property {TournamentType[]} typeOptions
  * @property {string[]} playerPool
  */
 
@@ -27,7 +24,6 @@ export const THEMES = [
       'Torneo Noche de Goles',
       'Liga Indoor 5v5',
     ],
-    typeOptions: ['Torneo', 'Copa', 'Liga'],
     playerPool: [
       'Carlos Rivera',
       'Mateo Vargas',
@@ -62,7 +58,6 @@ export const THEMES = [
       'Torneo de Clutches',
       'Liga de Scrims',
     ],
-    typeOptions: ['Torneo', 'Copa'],
     playerPool: [
       'NovaStrike',
       'PixelWolf',
@@ -97,7 +92,6 @@ export const THEMES = [
       'Copa Fin de Semana',
       'Liga de los Domingos',
     ],
-    typeOptions: ['Torneo', 'Copa', 'Liga'],
     playerPool: [
       'Ana',
       'Luis',
@@ -178,7 +172,6 @@ export function samplePlayers(playerPool, size, random = Math.random) {
  * Build a filled form preset for a theme + size.
  * @param {{ themeId: string, size: number, random?: () => number }} options
  * @returns {{
- *   tournamentType: TournamentType,
  *   tournamentName: string,
  *   tournamentFormat: 'Eliminación simple',
  *   tournamentPlayers: string
@@ -193,7 +186,6 @@ export function buildPreset({ themeId, size, random = Math.random }) {
   const players = samplePlayers(theme.playerPool, size, random)
 
   return {
-    tournamentType: pickOne(theme.typeOptions, random),
     tournamentName: pickOne(theme.nameTemplates, random),
     tournamentFormat: 'Eliminación simple',
     tournamentPlayers: players.join('\n'),
@@ -201,12 +193,11 @@ export function buildPreset({ themeId, size, random = Math.random }) {
 }
 
 /**
- * Random theme + size + name/type/players for the Sorpresa button.
+ * Random theme + size + name/players for the Sorpresa button.
  * @param {{ random?: () => number }} [options]
  * @returns {{
  *   themeId: string,
  *   size: number,
- *   tournamentType: TournamentType,
  *   tournamentName: string,
  *   tournamentFormat: 'Eliminación simple',
  *   tournamentPlayers: string
