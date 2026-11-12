@@ -114,7 +114,7 @@ const props = defineProps({
 
 const emit = defineEmits(['go-back', 'bracket-change', 'competition-data-change'])
 
-const { getShareUrl } = useSession()
+const { createShareUrl, getShareUrl } = useSession()
 
 const competitionTitle = computed(
   () => props.competitionData.tournamentName?.trim() ?? ''
@@ -194,7 +194,8 @@ const goBack = () => {
 }
 
 async function onShare() {
-  const url = getShareUrl()
+  let url = await createShareUrl()
+  if (!url) url = getShareUrl()
   if (!url) {
     toast.error('No se pudo generar el enlace')
     return

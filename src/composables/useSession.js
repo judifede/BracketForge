@@ -8,6 +8,12 @@ import {
   readShareHash,
   saveToLocalStorage,
 } from '../lib/sessionSnapshot.js'
+import {
+  createShareUrl as resolveShareUrl,
+  isShortShareId,
+  loadShortShare,
+  shouldClearShareHashAfterLoad,
+} from '../lib/shortShare.js'
 
 /** @type {import('vue').Ref<'setup'|'competition'>} */
 const view = ref('setup')
@@ -37,14 +43,30 @@ export function useSession() {
 
   /**
    * Boot from URL hash `#s=` then localStorage.
-   * @returns {{ fromShare: boolean, error: boolean }}
+   * @returns {Promise<{ fromShare: boolean, error: boolean }>}
    */
-  function hydrate() {
+  async function hydrate() {
     shareLoadError.value = false
     const sharePayload = readShareHash()
     if (sharePayload) {
-      const decoded = decodeSharePayload(sharePayload)
-      clearShareHash()
+      let payloadForDecode = sharePayload
+      if (isShortShareId(sharePayload)) {
+        const remote = await loadShortShare(sharePayload)
+        if (remote) payloadForDecode = remote
+        else if (!sharePayload.startsWith('v1.') && !sharePayload.startsWith('v2.')) {
+          clearShareHash()
+          shareLoadError.value = true
+          view.value = 'setup'
+          competitionData.value = null
+          bracket.value = null
+          hydrated.value = true
+          return { fromShare: true, error: true }
+        }
+      }
+      const decoded = decodeSharePayload(payloadForDecode)
+      if (shouldClearShareHashAfterLoad(sharePayload)) {
+        clearShareHash()
+      }
       if (decoded) {
         view.value = decoded.view
         competitionData.value = decoded.competitionData
@@ -114,10 +136,19 @@ export function useSession() {
   }
 
   /**
+   * Long v2 hash URL (sync).
    * @returns {string|null}
    */
   function getShareUrl() {
     return buildShareUrl(snapshot.value)
+  }
+
+  /**
+   * Short Firestore link when configured, else v2 hash URL.
+   * @returns {Promise<string|null>}
+   */
+  async function createShareUrl() {
+    return resolveShareUrl(snapshot.value)
   }
 
   watch(snapshot, () => persist(), { deep: true })
@@ -136,5 +167,6 @@ export function useSession() {
     setBracket,
     setCompetitionData,
     getShareUrl,
+    createShareUrl,
   }
 }

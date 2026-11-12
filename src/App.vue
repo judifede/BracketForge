@@ -54,7 +54,7 @@ const currentView = computed(() =>
 )
 
 onMounted(async () => {
-  const result = hydrate()
+  const result = await hydrate()
   if (result.error) {
     toast.error('El enlace compartido no es válido. Volviendo a la configuración.')
   } else if (result.fromShare) {

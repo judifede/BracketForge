@@ -1,0 +1,20 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /shares/{id} {
+      function isValidShareId() {
+        return id.matches('^[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{6}$');
+      }
+
+      allow get: if isValidShareId();
+      allow list: if false;
+      allow update, delete: if false;
+      allow create: if isValidShareId()
+        && !exists(/databases/$(database)/documents/shares/$(id))
+        && request.resource.data.keys().hasOnly(['payload', 'createdAt', 'v'])
+        && request.resource.data.v == 1
+        && request.resource.data.payload is string
+        && request.resource.data.payload.matches('^v2\\..*');
+    }
+  }
+}

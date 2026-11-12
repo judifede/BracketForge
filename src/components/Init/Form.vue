@@ -150,7 +150,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['submit-form'])
-const { getShareUrl, setCompetitionData } = useSession()
+const { createShareUrl, getShareUrl, setCompetitionData } = useSession()
 
 const tournamentName = ref('')
 const tournamentFormat = ref('Eliminación simple')
@@ -234,7 +234,8 @@ const canShareSetup = computed(() => {
 })
 
 async function onShare() {
-  const url = getShareUrl()
+  let url = await createShareUrl()
+  if (!url) url = getShareUrl()
   if (!url) {
     toast.error('No hay nada que compartir todavía')
     return
