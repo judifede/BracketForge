@@ -72,11 +72,19 @@ export function serializePlayers(players) {
 /**
  * Validate free-text player input for forms.
  * @param {string|string[]} input
- * @param {{ min?: number }} [options]
- * @returns {{ ok: boolean, players: string[], error: string|null, hadDuplicates: boolean }}
+ * @param {{ min?: number, max?: number }} [options]
+ * @returns {{
+ *   ok: boolean,
+ *   players: string[],
+ *   error: string|null,
+ *   hadDuplicates: boolean,
+ *   overMax: boolean,
+ * }}
  */
 export function validatePlayersInput(input, options = {}) {
   const min = options.min ?? 2
+  const max =
+    typeof options.max === 'number' && options.max > 0 ? options.max : null
   let rawNames = []
   let hadDuplicates = false
 
@@ -90,6 +98,7 @@ export function validatePlayersInput(input, options = {}) {
         players: [],
         error: 'Añade al menos 2 participantes.',
         hadDuplicates: false,
+        overMax: false,
       }
     }
     rawNames = splitPlayerText(trimmed).map(normalizeName).filter(Boolean)
@@ -99,12 +108,14 @@ export function validatePlayersInput(input, options = {}) {
       players: [],
       error: 'Añade al menos 2 participantes.',
       hadDuplicates: false,
+      overMax: false,
     }
   }
 
   const deduped = dedupePlayers(rawNames)
   hadDuplicates = deduped.hadDuplicates
   const players = deduped.players
+  const overMax = max != null && players.length > max
 
   if (players.length < min) {
     return {
@@ -115,6 +126,17 @@ export function validatePlayersInput(input, options = {}) {
           ? 'Añade al menos 2 participantes.'
           : `Se necesitan al menos ${min} participantes (ahora: ${players.length}).`,
       hadDuplicates,
+      overMax,
+    }
+  }
+
+  if (overMax) {
+    return {
+      ok: false,
+      players,
+      error: `Máximo ${max} participantes (ahora: ${players.length}).`,
+      hadDuplicates,
+      overMax: true,
     }
   }
 
@@ -125,5 +147,6 @@ export function validatePlayersInput(input, options = {}) {
       ? 'Se omitieron nombres duplicados.'
       : null,
     hadDuplicates,
+    overMax: false,
   }
 }

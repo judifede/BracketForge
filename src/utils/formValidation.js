@@ -25,6 +25,7 @@ export function validateTournamentName(name) {
  *   tournamentType?: unknown,
  *   tournamentFormat?: unknown,
  *   tournamentPlayers?: string|string[],
+ *   maxPlayers?: number,
  * }} fields
  * @returns {{
  *   ok: boolean,
@@ -41,7 +42,9 @@ export function validateTournamentName(name) {
  */
 export function validateCompetitionForm(fields) {
   const nameResult = validateTournamentName(fields.tournamentName)
-  const playersResult = validatePlayersInput(fields.tournamentPlayers)
+  const playersResult = validatePlayersInput(fields.tournamentPlayers, {
+    max: fields.maxPlayers,
+  })
 
   if (!nameResult.ok || !playersResult.ok) {
     return {

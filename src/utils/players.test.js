@@ -119,4 +119,17 @@ describe('validatePlayersInput', () => {
     expect(result.players).toEqual(['Ana'])
     expect(result.hadDuplicates).toBe(true)
   })
+
+  it('rejects more than max when max is set', () => {
+    const result = validatePlayersInput('Ana, Bob, Carla', { max: 2 })
+    expect(result.ok).toBe(false)
+    expect(result.overMax).toBe(true)
+    expect(result.error).toMatch(/Máximo 2/i)
+  })
+
+  it('accepts exactly max players', () => {
+    const result = validatePlayersInput('Ana, Bob', { max: 2 })
+    expect(result.ok).toBe(true)
+    expect(result.overMax).toBe(false)
+  })
 })
