@@ -1,4 +1,5 @@
 import { shuffle } from '../utils/shuffle.js'
+import { listFormats } from '../lib/formats/index.js'
 
 /**
  * @typedef {object} FormTheme
@@ -9,8 +10,7 @@ import { shuffle } from '../utils/shuffle.js'
  */
 
 /** @type {readonly number[]} */
-export const SIZES = Object.freeze([4, 8, 16])
-
+export const SIZES = Object.freeze([4, 5, 6, 7, 8, 12, 16])
 /** @type {FormTheme[]} */
 export const THEMES = [
   {
@@ -170,14 +170,15 @@ export function samplePlayers(playerPool, size, random = Math.random) {
 
 /**
  * Build a filled form preset for a theme + size.
- * @param {{ themeId: string, size: number, random?: () => number }} options
+ * @param {{ themeId: string, size: number, format?: string, random?: () => number }} options
  * @returns {{
  *   tournamentName: string,
- *   tournamentFormat: 'Eliminación simple',
- *   tournamentPlayers: string
+ *   tournamentFormat: string,
+ *   tournamentPlayers: string,
+ *   tournamentOptions: Object,
  * }}
  */
-export function buildPreset({ themeId, size, random = Math.random }) {
+export function buildPreset({ themeId, size, format = 'e', random = Math.random }) {
   if (!SIZES.includes(size)) {
     throw new Error(`Invalid size: ${size}. Expected one of ${SIZES.join(', ')}`)
   }
@@ -187,26 +188,40 @@ export function buildPreset({ themeId, size, random = Math.random }) {
 
   return {
     tournamentName: pickOne(theme.nameTemplates, random),
-    tournamentFormat: 'Eliminación simple',
+    tournamentFormat: format,
     tournamentPlayers: players.join('\n'),
+    tournamentOptions: {},
   }
 }
 
 /**
  * Random theme + size + name/players for the Sorpresa button.
- * @param {{ random?: () => number }} [options]
+ * Picks a random implemented format unless `format` is passed explicitly.
+ * @param {{ format?: string, random?: () => number }} [options]
  * @returns {{
  *   themeId: string,
  *   size: number,
  *   tournamentName: string,
- *   tournamentFormat: 'Eliminación simple',
- *   tournamentPlayers: string
+ *   tournamentFormat: string,
+ *   tournamentPlayers: string,
+ *   tournamentOptions: Object,
  * }}
  */
-export function buildSurprisePreset({ random = Math.random } = {}) {
+export function buildSurprisePreset({ format, random = Math.random } = {}) {
   const theme = pickOne(THEMES, random)
   const size = pickOne([...SIZES], random)
-  const preset = buildPreset({ themeId: theme.id, size, random })
+  const resolvedFormat =
+    format ??
+    pickOne(
+      listFormats({ onlyImplemented: true }).map((entry) => entry.id),
+      random
+    )
+  const preset = buildPreset({
+    themeId: theme.id,
+    size,
+    format: resolvedFormat,
+    random,
+  })
 
   return {
     themeId: theme.id,

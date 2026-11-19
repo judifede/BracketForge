@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col gap-1 text-left players-field">
-    <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-      <label :for="inputId" class="!justify-start text-sm font-medium text-white">
+    <div class="flex flex-col items-start gap-[0.4rem]">
+      <label :for="inputId" class="!justify-start !w-auto text-sm font-medium text-white">
         Participantes
       </label>
       <div
@@ -24,13 +24,13 @@
     </div>
 
     <div
-      class="grid max-w-[370px] grid-cols-1 gap-[0.45rem] min-[420px]:grid-cols-2"
+      class="grid w-full max-w-[320px] grid-cols-1 gap-[0.45rem] min-[380px]:grid-cols-2"
       :data-tour="$attrs['data-tour']"
     >
       <label
         v-for="(slot, index) in slotValues"
         :key="index"
-        class="flex flex-col gap-[0.2rem]"
+        class="!justify-start flex flex-col !items-stretch gap-[0.2rem]"
       >
         <span class="text-[0.7rem] font-semibold uppercase tracking-wide text-text-muted">
           Jugador {{ index + 1 }}

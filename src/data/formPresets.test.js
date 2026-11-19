@@ -7,6 +7,7 @@ import {
   buildPreset,
   buildSurprisePreset,
 } from './formPresets.js'
+import { listFormats } from '../lib/formats/index.js'
 import { validatePlayersInput } from '../utils/players.js'
 
 /** Deterministic RNG that cycles through fixed fractions. */
@@ -19,9 +20,13 @@ function sequenceRandom(values) {
   }
 }
 
+const implementedFormatIds = listFormats({ onlyImplemented: true }).map(
+  (entry) => entry.id
+)
+
 describe('formPresets datasets', () => {
-  it('exposes sizes 4, 8, 16', () => {
-    expect(SIZES).toEqual([4, 8, 16])
+  it('exposes sizes useful for SE and RR/Swiss', () => {
+    expect(SIZES).toEqual([4, 5, 6, 7, 8, 12, 16])
   })
 
   it('includes Fútbol, Esports and Amigos with large unique pools', () => {
@@ -65,7 +70,7 @@ describe('buildPreset', () => {
     const preset = buildPreset({ themeId: 'esports', size: 4, random })
 
     expect(theme.nameTemplates).toContain(preset.tournamentName)
-    expect(preset.tournamentFormat).toBe('Eliminación simple')
+    expect(preset.tournamentFormat).toBe('e')
     expect(preset).not.toHaveProperty('tournamentType')
 
     const lines = preset.tournamentPlayers.split('\n')
@@ -80,6 +85,17 @@ describe('buildPreset', () => {
     expect(validation.players).toHaveLength(4)
   })
 
+  it('accepts RR/Swiss-friendly sizes', () => {
+    const preset = buildPreset({
+      themeId: 'futbol',
+      size: 5,
+      format: 'r',
+      random: sequenceRandom([0, 0.1, 0.2, 0.3, 0.4, 0.5]),
+    })
+    expect(preset.tournamentPlayers.split('\n')).toHaveLength(5)
+    expect(preset.tournamentFormat).toBe('r')
+  })
+
   it('is deterministic with an injected RNG', () => {
     const randomA = sequenceRandom([0.2, 0.4, 0.1, 0.9, 0.3, 0.5, 0.7, 0.8])
     const randomB = sequenceRandom([0.2, 0.4, 0.1, 0.9, 0.3, 0.5, 0.7, 0.8])
@@ -91,15 +107,16 @@ describe('buildPreset', () => {
 
   it('rejects unknown themes and invalid sizes', () => {
     expect(() => buildPreset({ themeId: 'nope', size: 8 })).toThrow(/Unknown theme/)
-    expect(() => buildPreset({ themeId: 'futbol', size: 5 })).toThrow(/Invalid size/)
+    expect(() => buildPreset({ themeId: 'futbol', size: 9 })).toThrow(/Invalid size/)
   })
 })
 
 describe('buildSurprisePreset', () => {
-  it('returns themeId, size and a form-ready payload', () => {
+  it('returns themeId, size and a form-ready payload with a random format', () => {
     const random = sequenceRandom([
       0.1, // theme
       0.5, // size
+      0.2, // format
       // buildPreset: shuffle players + name pick
       0.2, 0.3, 0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
     ])
@@ -108,7 +125,7 @@ describe('buildSurprisePreset', () => {
 
     expect(SIZES).toContain(surprise.size)
     expect(theme.nameTemplates).toContain(surprise.tournamentName)
-    expect(surprise.tournamentFormat).toBe('Eliminación simple')
+    expect(implementedFormatIds).toContain(surprise.tournamentFormat)
     expect(surprise).not.toHaveProperty('tournamentType')
 
     const lines = surprise.tournamentPlayers.split('\n')
@@ -119,6 +136,14 @@ describe('buildSurprisePreset', () => {
     }
 
     expect(validatePlayersInput(surprise.tournamentPlayers).ok).toBe(true)
+  })
+
+  it('keeps an explicitly passed format', () => {
+    const surprise = buildSurprisePreset({
+      format: 's',
+      random: sequenceRandom([0.1, 0.5, 0.2, 0.3, 0, 0.1, 0.2, 0.3, 0.4]),
+    })
+    expect(surprise.tournamentFormat).toBe('s')
   })
 
   it('is deterministic with an injected RNG', () => {

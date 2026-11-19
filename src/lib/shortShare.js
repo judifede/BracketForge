@@ -11,12 +11,33 @@ const SHARE_ID_LENGTH = 6
 const SHARE_ID_PATTERN = new RegExp(`^[${SHARE_ID_ALPHABET}]{${SHARE_ID_LENGTH}}$`)
 
 /**
+ * Umbral a partir del cual un enlace con el payload en el hash puede no caber
+ * en algunos sitios (WhatsApp, Slack, etc.).
+ */
+export const LONG_SHARE_THRESHOLD = 8000
+
+/**
+ * ¿El enlace es demasiado largo para compartirse con comodidad?
+ * @param {unknown} url
+ * @returns {boolean}
+ */
+export function isLongShareUrl(url) {
+  return typeof url === 'string' && url.length > LONG_SHARE_THRESHOLD
+}
+
+/**
  * @param {string} value
  * @returns {boolean}
  */
 export function isShortShareId(value) {
   if (typeof value !== 'string') return false
-  if (value.startsWith('v1.') || value.startsWith('v2.')) return false
+  if (
+    value.startsWith('v1.') ||
+    value.startsWith('v2.') ||
+    value.startsWith('v3.')
+  ) {
+    return false
+  }
   return SHARE_ID_PATTERN.test(value)
 }
 

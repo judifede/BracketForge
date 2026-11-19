@@ -34,8 +34,9 @@ import {
 
 const sampleCompetition = {
   tournamentName: 'Copa Pixel',
-  tournamentFormat: 'Eliminación simple',
+  tournamentFormat: 'e',
   tournamentPlayers: ['NovaStrike', 'PixelWolf', 'ShadowByte', 'LagKiller'],
+  tournamentOptions: {},
 }
 
 describe('shortShare', () => {
@@ -51,10 +52,11 @@ describe('shortShare', () => {
     expect([...id].every((ch) => SHARE_ID_ALPHABET.includes(ch))).toBe(true)
   })
 
-  it('detects short ids vs v1/v2 payloads', () => {
+  it('detects short ids vs v1/v2/v3 payloads', () => {
     expect(isShortShareId('Ab3Xk9')).toBe(false)
     expect(isShortShareId('234ABC')).toBe(true)
     expect(isShortShareId('v2.abc')).toBe(false)
+    expect(isShortShareId('v3.abc')).toBe(false)
     expect(isShortShareId('v1.abc')).toBe(false)
     expect(isShortShareId('short!')).toBe(false)
   })
@@ -67,6 +69,7 @@ describe('shortShare', () => {
   it('clears hash after load only for long embedded payloads', () => {
     expect(shouldClearShareHashAfterLoad('234ABC')).toBe(false)
     expect(shouldClearShareHashAfterLoad('v2.abc.def')).toBe(true)
+    expect(shouldClearShareHashAfterLoad('v3.abc.def')).toBe(true)
     expect(shouldClearShareHashAfterLoad('v1.legacy')).toBe(true)
     expect(shouldClearShareHashAfterLoad('')).toBe(false)
   })
@@ -84,7 +87,7 @@ describe('shortShare', () => {
     const snap = createSnapshot({
       view: 'setup',
       competitionData: sampleCompetition,
-      bracket: null,
+      state: null,
     })
     await expect(createShortShare(snap)).resolves.toBeNull()
     await expect(loadShortShare('234ABC')).resolves.toBeNull()
@@ -92,7 +95,7 @@ describe('shortShare', () => {
       origin: 'https://example.com',
       pathname: '/',
     })
-    expect(url).toMatch(/^https:\/\/example\.com\/#s=v2\./)
+    expect(url).toMatch(/^https:\/\/example\.com\/#s=v3\./)
   })
 
   it('creates and loads a short share when Firestore is available', async () => {
@@ -101,7 +104,7 @@ describe('shortShare', () => {
     const snap = createSnapshot({
       view: 'competition',
       competitionData: sampleCompetition,
-      bracket,
+      state: { format: 'e', data: bracket },
     })
     const payload = encodeSharePayload(snap)
     expect(payload).toBeTruthy()

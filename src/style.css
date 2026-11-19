@@ -42,8 +42,7 @@
   }
 
   #app {
-    @apply mx-auto text-center overflow-x-clip;
-    max-width: min(1280px, 100%);
+    @apply mx-auto w-full max-w-full text-center overflow-x-clip;
     padding: 1rem;
   }
 
@@ -94,6 +93,49 @@
 
   .container-label {
     @apply !flex justify-between items-center gap-2 !w-full font-medium;
+  }
+
+  /*
+   * Format options — do NOT rely on global `label` / container-label.
+   * That utility is justify-between + w-full and turns a checkbox row into
+   * [box] …… [1-word crushed column on the right].
+   */
+  .form-option {
+    @apply flex w-full max-w-full text-left text-white/90;
+  }
+
+  .form-option--bool {
+    @apply flex-row items-start justify-start gap-2.5;
+  }
+
+  /* Consecutive number options share a wrapping row (pointsWin | pointsDraw). */
+  .form-option-numbers {
+    @apply flex w-full max-w-full flex-wrap items-start gap-x-4 gap-y-2;
+  }
+
+  .form-option--number {
+    @apply w-fit min-w-[9.5rem] max-w-full flex-1 flex-col items-start gap-1;
+  }
+
+  .form-option__control[type='checkbox'] {
+    @apply mt-0.5 h-4 w-4 shrink-0;
+  }
+
+  /* Nested label: fully opt out of container-label (justify-between / w-full). */
+  .form-option__text {
+    @apply !flex !w-auto !max-w-full !flex-col !items-start !justify-start gap-0.5 text-left font-medium;
+  }
+
+  .form-option--bool .form-option__text {
+    @apply min-w-0 flex-1;
+  }
+
+  .form-option__label {
+    @apply text-sm font-medium text-white;
+  }
+
+  .form-option__hint {
+    @apply text-xs font-normal leading-snug text-white/60 text-pretty;
   }
 
   .no-valid {
@@ -301,7 +343,7 @@
   /* Competition chrome */
   .bracket-toolbar {
     @apply flex flex-wrap items-center justify-center gap-2 sm:gap-3 md:gap-4;
-    @apply mx-auto w-full max-w-5xl px-2 py-2 sm:px-3 sm:py-2.5;
+    @apply mx-auto w-full max-w-full px-2 py-2 sm:px-3 sm:py-2.5;
     @apply sticky top-2 z-20 rounded-md border border-subtle;
     background: linear-gradient(
       180deg,
@@ -312,11 +354,32 @@
   }
 
   .toolbar-format {
-    @apply m-0 text-[0.65rem] sm:text-xs font-medium uppercase tracking-[0.1em] sm:tracking-[0.12em] text-white/80;
+    @apply m-0 inline-flex items-center gap-1.5 sm:gap-2;
   }
 
-  .toolbar-format span {
-    @apply ml-1.5 sm:ml-2 text-xs sm:text-sm normal-case tracking-normal font-semibold text-live;
+  .toolbar-format > span {
+    @apply text-xs sm:text-sm font-semibold text-live;
+  }
+
+  .toolbar-format-info {
+    @apply inline-grid place-items-center shrink-0 w-5 h-5 sm:w-6 sm:h-6 p-0 rounded-full;
+    @apply text-[0.7rem] sm:text-xs font-bold leading-none text-live not-italic;
+    border: 1px solid color-mix(in srgb, var(--accent-live) 50%, transparent);
+    background: color-mix(in srgb, var(--accent-live) 10%, transparent);
+    transition:
+      background 0.15s ease,
+      border-color 0.15s ease,
+      color 0.15s ease;
+  }
+
+  .toolbar-format-info > span {
+    /* Compensa la métrica tipográfica de la “i” (ascendente alto, sin descendente). */
+    transform: translateY(0.05em);
+  }
+
+  .toolbar-format-info:hover {
+    @apply border-live text-white;
+    background: color-mix(in srgb, var(--accent-live) 22%, transparent);
   }
 
   .champion-chip {
@@ -437,6 +500,8 @@
     stroke-width: 2.25;
     stroke-linejoin: round;
     stroke-linecap: round;
+    /* Never steal slot hits at edges where the stroke meets a match. */
+    pointer-events: none;
     transition:
       stroke 0.25s ease,
       stroke-width 0.25s ease;
@@ -446,6 +511,112 @@
     stroke: #f5c518;
     stroke-width: 2.75;
     filter: drop-shadow(0 0 3px color-mix(in srgb, #f5c518 55%, transparent));
+  }
+
+  /* Caídas del bracket de ganadores al de perdedores (doble eliminación). */
+  .bracket-connector--drop {
+    stroke: rgba(167, 139, 250, 0.34);
+    stroke-width: 1.6;
+    stroke-dasharray: 5 4;
+  }
+
+  .de-section-title {
+    @apply pointer-events-none font-bold tracking-[0.18em];
+    fill: rgba(255, 255, 255, 0.55);
+    font-size: 11px;
+  }
+
+  /* ── Vistas de tabla (round robin, suizo) ─────────────────────────────── */
+
+  .rr-view {
+    @apply flex flex-col gap-5 w-full;
+  }
+
+  .rr-section-title {
+    @apply text-sm font-semibold uppercase tracking-[0.14em] text-text-muted;
+  }
+
+  .rr-standings {
+    @apply panel px-4 py-3;
+  }
+
+  .rr-rounds {
+    @apply flex flex-col gap-2;
+  }
+
+  /* Jornadas en 1 / 2 / 3 columnas según ancho. */
+  .rr-rounds-grid {
+    @apply grid gap-3;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+  }
+
+  .rr-rounds-grid > .rr-round {
+    @apply self-start w-full min-w-0;
+  }
+
+  .rr-round {
+    @apply panel px-4 py-3;
+  }
+
+  .rr-round--complete {
+    border-color: color-mix(in srgb, var(--accent-win) 35%, transparent);
+  }
+
+  .rr-round-title {
+    @apply mb-2 flex items-center justify-between gap-2 text-sm font-semibold text-white/90;
+  }
+
+  .rr-round-toggle {
+    @apply flex min-w-0 items-center gap-1.5 text-left;
+  }
+
+  .rr-round-caret {
+    @apply inline-block shrink-0 text-xs text-text-muted transition-transform;
+  }
+
+  .rr-round-caret--open {
+    transform: rotate(90deg);
+  }
+
+  .rr-round-progress {
+    @apply shrink-0 text-xs font-normal text-text-muted tabular-nums;
+  }
+
+  .rr-round-matches {
+    @apply flex flex-col gap-1.5;
+  }
+
+  .rr-match {
+    @apply flex items-center gap-2 rounded border border-subtle bg-slot px-2.5 py-1.5 text-sm;
+  }
+
+  .rr-match-name {
+    @apply min-w-0 flex-1 truncate text-white/85;
+  }
+
+  .rr-match-name--winner {
+    @apply font-semibold text-win;
+  }
+
+  .rr-rematch-warning {
+    @apply mb-2 rounded border border-[#f59e0b]/40 bg-[#f59e0b]/10 px-2 py-1 text-xs text-[#fbbf24];
+  }
+
+  .rr-score {
+    @apply w-12 rounded border border-subtle bg-panel px-1.5 py-0.5 text-center text-sm text-white tabular-nums;
+  }
+
+  .rr-score:focus {
+    outline: none;
+    border-color: var(--accent-win);
+  }
+
+  .standings-row {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  }
+
+  .standings-row--leader {
+    background: color-mix(in srgb, var(--accent-win) 8%, transparent);
   }
 
   .match-frame {
@@ -458,6 +629,9 @@
   .slot-rect {
     fill: url(#cbg-slot-idle);
     stroke: none;
+    /* Hit the slot geometry even if a gradient url() fails to resolve
+       (fill becomes none → default visiblePainted would ignore the click). */
+    pointer-events: all;
     transition:
       fill 0.18s ease,
       opacity 0.18s ease;

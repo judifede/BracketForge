@@ -4,7 +4,7 @@
       Configurar competición
     </Heading>
     <p class="-mt-[0.35rem] mb-5 text-[0.95rem] leading-snug text-text-muted">
-      Define el torneo, añade participantes y genera el bracket en segundos.
+      Define el torneo, añade participantes y genéralo en segundos.
     </p>
 
     <form class="w-full" @submit.prevent="submitForm">
@@ -43,18 +43,74 @@
             Formato
           </label>
           <select id="format" name="format" v-model="tournamentFormat" data-tour="setup-format">
-            <option value="Eliminación simple">Eliminación simple</option>
-            <option value="Doble eliminación" disabled>
-              Doble eliminación (próximamente)
-            </option>
-            <option value="Todos contra todos" disabled>
-              Todos contra todos (próximamente)
-            </option>
-            <option value="Suizo" disabled>Suizo (próximamente)</option>
-            <option value="Todos contra todos libre" disabled>
-              FFA (próximamente)
+            <option
+              v-for="format in FORMATS"
+              :key="format.id"
+              :value="format.id"
+              :disabled="!format.implemented"
+            >
+              {{ format.label }}{{ format.implemented ? '' : ' (próximamente)' }}
             </option>
           </select>
+        </div>
+
+        <div
+          v-if="formatOptions.length"
+          class="flex flex-col gap-2.5 text-left"
+          data-tour="setup-options"
+        >
+          <span class="text-sm font-medium text-white">Opciones del formato</span>
+          <div class="flex flex-col gap-2">
+            <template v-for="row in formatOptionRows" :key="row.key">
+              <!--
+                Outer row is a div on purpose: global `label` → container-label
+                applies justify-between + w-full and crushes checkbox + hint.
+              -->
+              <div
+                v-if="row.kind === 'bool'"
+                class="form-option form-option--bool"
+              >
+                <input
+                  :id="`opt-${row.option.key}`"
+                  type="checkbox"
+                  class="form-option__control"
+                  :checked="Boolean(tournamentOptions[row.option.key])"
+                  @change="
+                    tournamentOptions[row.option.key] = $event.target.checked
+                  "
+                />
+                <label :for="`opt-${row.option.key}`" class="form-option__text">
+                  <span class="form-option__label">{{ row.option.label }}</span>
+                  <span v-if="row.option.hint" class="form-option__hint">
+                    {{ row.option.hint }}
+                  </span>
+                </label>
+              </div>
+              <div v-else class="form-option-numbers">
+                <div
+                  v-for="option in row.options"
+                  :key="option.key"
+                  class="form-option form-option--number"
+                >
+                  <label :for="`opt-${option.key}`" class="form-option__text">
+                    <span class="form-option__label">{{ option.label }}</span>
+                    <span v-if="option.hint" class="form-option__hint">
+                      {{ option.hint }}
+                    </span>
+                  </label>
+                  <input
+                    :id="`opt-${option.key}`"
+                    type="number"
+                    class="form-option__control box !w-20 !max-w-full rounded-md border border-subtle !px-[0.45rem] !py-[0.3rem] text-white bg-slot"
+                    :min="option.min"
+                    :max="option.max"
+                    :value="tournamentOptions[option.key]"
+                    @input="onNumberOption(option, $event.target.value)"
+                  />
+                </div>
+              </div>
+            </template>
+          </div>
         </div>
 
         <div class="flex flex-col items-start gap-[0.45rem] pt-1 text-left" data-tour="setup-presets">
@@ -89,7 +145,7 @@
           class="error-message text-left"
           role="alert"
         >
-          Revisa los campos marcados antes de crear el bracket.
+          Revisa los campos marcados antes de crear el torneo.
         </div>
 
         <div class="flex flex-wrap items-center justify-center gap-[0.65rem] pt-1">
@@ -106,7 +162,7 @@
             data-tour="setup-submit"
             :disabled="!isFormValid"
           >
-            Crear bracket
+            Crear torneo
           </button>
         </div>
       </section>
@@ -137,6 +193,12 @@ import {
   buildPreset,
   buildSurprisePreset,
 } from '../../data/formPresets.js'
+import {
+  FORMATS,
+  getFormat,
+  normalizeFormatOptions,
+  resolveFormatId,
+} from '../../lib/formats/index.js'
 import { toast } from 'vue-sonner'
 import { useSession } from '../../composables/useSession.js'
 
@@ -153,7 +215,8 @@ const emit = defineEmits(['submit-form'])
 const { createShareUrl, getShareUrl, setCompetitionData } = useSession()
 
 const tournamentName = ref('')
-const tournamentFormat = ref('Eliminación simple')
+const tournamentFormat = ref('e')
+const tournamentOptions = ref({})
 const playersText = ref('')
 
 const isTextAreaValid = ref(false)
@@ -162,11 +225,49 @@ const nameTouched = ref(false)
 const submitted = ref(false)
 const selectedSize = ref(8)
 
+/**
+ * Formato cuyas opciones están cargadas en pantalla. Evita que el watcher
+ * sobrescriba las opciones restauradas de una sesión o de un preset.
+ */
+let appliedFormatId = tournamentFormat.value
+
+/**
+ * Combina defaults del registro con overrides guardados/elegidos.
+ * Así checkboxes y números nunca quedan “fantasma” (p. ej. doble vuelta).
+ * @param {string} formatId
+ * @param {unknown} [overrides]
+ */
+function mergeFormatOptions(formatId, overrides = {}) {
+  const format = getFormat(formatId)
+  return {
+    ...(format?.defaultOptions ?? {}),
+    ...normalizeFormatOptions(overrides),
+  }
+}
+
+/**
+ * @param {{ key: string, min?: number, max?: number }} option
+ * @param {string} raw
+ */
+function onNumberOption(option, raw) {
+  if (raw === '' || raw == null) {
+    const defaults = getFormat(tournamentFormat.value)?.defaultOptions ?? {}
+    if (!(option.key in defaults)) {
+      delete tournamentOptions.value[option.key]
+      return
+    }
+  }
+  const value = Number(raw)
+  tournamentOptions.value[option.key] = value
+}
+
 function applyInitial(data) {
   if (!data) return
   tournamentName.value = data.tournamentName ?? ''
-  tournamentFormat.value =
-    migrateFormat(data.tournamentFormat) ?? 'Eliminación simple'
+  const formatId = resolveFormatId(data.tournamentFormat) ?? 'e'
+  tournamentFormat.value = formatId
+  appliedFormatId = formatId
+  tournamentOptions.value = mergeFormatOptions(formatId, data.tournamentOptions)
   if (Array.isArray(data.tournamentPlayers)) {
     playersText.value = serializePlayers(data.tournamentPlayers)
   } else if (typeof data.tournamentPlayers === 'string') {
@@ -174,26 +275,29 @@ function applyInitial(data) {
   }
 }
 
-function migrateFormat(format) {
-  if (!format) return null
-  if (format === 'Single Elimination') return 'Eliminación simple'
-  if (format === 'Double Elimination') return 'Doble eliminación'
-  if (format === 'Round Robin') return 'Todos contra todos'
-  if (format === 'Swiss') return 'Suizo'
-  if (format === 'Free for all') return 'Todos contra todos libre'
-  return format
-}
-
 function applyFilledPreset(preset) {
   tournamentName.value = preset.tournamentName
-  tournamentFormat.value = migrateFormat(preset.tournamentFormat) || 'Eliminación simple'
+  const formatId = resolveFormatId(preset.tournamentFormat) ?? 'e'
+  // El preset rellena nombre y participantes: no cambia el formato elegido
+  // por el usuario (ni sus opciones) salvo que sea otro distinto.
+  if (formatId !== tournamentFormat.value) {
+    tournamentFormat.value = formatId
+    appliedFormatId = formatId
+    tournamentOptions.value = mergeFormatOptions(formatId)
+  }
   playersText.value = preset.tournamentPlayers
   submitted.value = false
   nameTouched.value = false
 }
 
 function applyThemePreset(themeId) {
-  applyFilledPreset(buildPreset({ themeId, size: selectedSize.value }))
+  applyFilledPreset(
+    buildPreset({
+      themeId,
+      size: selectedSize.value,
+      format: tournamentFormat.value,
+    })
+  )
 }
 
 function applySurprisePreset() {
@@ -221,6 +325,52 @@ const handlePlayersValidation = (result) => {
 
 const isNameValid = computed(() => tournamentName.value.trim() !== '')
 
+const selectedFormat = computed(
+  () => getFormat(tournamentFormat.value) ?? getFormat('e')
+)
+
+const formatOptions = computed(() => selectedFormat.value.optionSchema ?? [])
+
+/**
+ * Agrupa números consecutivos en una fila (p. ej. puntos victoria/empate)
+ * y deja los booleanos como filas sueltas.
+ * @returns {Array<{ kind: 'bool', key: string, option: object } | { kind: 'numbers', key: string, options: object[] }>}
+ */
+const formatOptionRows = computed(() => {
+  const rows = []
+  /** @type {object[]} */
+  let numberBatch = []
+
+  const flushNumbers = () => {
+    if (!numberBatch.length) return
+    rows.push({
+      kind: 'numbers',
+      key: `numbers:${numberBatch.map((o) => o.key).join('+')}`,
+      options: numberBatch,
+    })
+    numberBatch = []
+  }
+
+  for (const option of formatOptions.value) {
+    if (option.type === 'number') {
+      numberBatch.push(option)
+      continue
+    }
+    flushNumbers()
+    rows.push({ kind: 'bool', key: option.key, option })
+  }
+  flushNumbers()
+  return rows
+})
+
+// Al cambiar de formato se recargan sus opciones por defecto.
+watch(tournamentFormat, (nextId) => {
+  if (nextId === appliedFormatId) return
+  appliedFormatId = nextId
+  if (!getFormat(nextId)) return
+  tournamentOptions.value = mergeFormatOptions(nextId)
+})
+
 const showNameError = computed(
   () => (nameTouched.value || submitted.value) && !isNameValid.value
 )
@@ -234,6 +384,17 @@ const canShareSetup = computed(() => {
 })
 
 async function onShare() {
+  // Sincroniza lo visible en el formulario para no compartir un formato viejo.
+  const result = validateCompetitionForm({
+    tournamentName: tournamentName.value,
+    tournamentFormat: tournamentFormat.value,
+    tournamentPlayers: playersText.value,
+    tournamentOptions: tournamentOptions.value,
+  })
+  if (result.ok && result.data) {
+    setCompetitionData(result.data)
+  }
+
   let url = await createShareUrl()
   if (!url) url = getShareUrl()
   if (!url) {
@@ -256,6 +417,7 @@ const submitForm = () => {
     tournamentName: tournamentName.value,
     tournamentFormat: tournamentFormat.value,
     tournamentPlayers: playersText.value,
+    tournamentOptions: tournamentOptions.value,
   })
 
   if (!result.ok || !result.data) {
@@ -265,6 +427,10 @@ const submitForm = () => {
 
   if (result.playersResult.hadDuplicates) {
     toast.info('Se omitieron nombres duplicados.')
+  }
+
+  if (result.warning) {
+    toast.info(result.warning)
   }
 
   setCompetitionData(result.data)

@@ -1,6 +1,12 @@
 # Plan de formatos de torneo
 
-Documento de diseño para formatos adicionales. **Sin implementación de motores** en este alcance.
+Diseño de los formatos adicionales. **Implementados**: los cuatro formatos de este documento
+tienen motor, vista y tests (`src/lib/formats/`).
+
+> Para la ejecución (arquitectura, contratos de motor, reglas exactas por formato, fases y
+> criterios de aceptación), ver
+> [Plan de implementación de los formatos pendientes](./tournament-formats-implementation-plan.md).
+
 
 ## Eliminación simple (actual)
 
@@ -13,17 +19,17 @@ Documento de diseño para formatos adicionales. **Sin implementación de motores
 ## Doble eliminación
 
 ### Objetivo
-Cada participante debe perder **dos veces** para quedar eliminado. Hay bracket de ganadores (WB) y de perdedores (LB); el campeón suele definirse en una gran final (a veces con reset).
+Cada participante debe perder **dos veces** para quedar eliminado. Hay bracket de ganadores (WB) y de perdedores (LB); el campeón se define en una sola gran final.
 
 ### Modelo de datos (propuesto)
 - `brackets.winners`: rondas WB
 - `brackets.losers`: rondas LB (más densas; emparejamientos desde WB)
-- `grandFinal`: partido(s) final(es)
+- `grandFinal`: un partido final (campeón WB vs campeón LB)
 - Referencias de “drop” desde cada derrota WB hacia un slot LB
 
 ### UI
 - Dos columnas o pestañas WB / LB, o un layout Challonge-like apilado.
-- Destacar el camino del campeón y el reset de gran final si aplica.
+- Destacar el camino del campeón hasta la gran final.
 
 ### Riesgos
 - Layout mucho más ancho/alto; pan/zoom obligatorio.
@@ -70,30 +76,11 @@ Emparejar cada ronda por puntuación similar, sin eliminación directa. Ideal cu
 
 ---
 
-## FFA (Free for All)
-
-### Objetivo
-Partidas multi-jugador (más de 2 por heat). Avance por posición / puntos, no 1v1 puro.
-
-### Modelo de datos (propuesto)
-- `heats[]` con `entrants[]`, `placements` o `scores`
-- Criterio de corte configurable (top N avanzan)
-
-### UI
-- Tarjetas de heat en lugar de matches binarios.
-- Configuración de tamaño de heat y regla de avance en setup.
-
-### Riesgos
-- El layout de “bracket” clásico no encaja; hace falta otro componente visual.
-
----
-
 ## Orden de implementación sugerido
 
 1. Doble eliminación (reutiliza mucho del motor de rondas actual).
 2. Round Robin (tabla + standings).
 3. Suizo (pairing + rondas).
-4. FFA (nuevo paradigma de heat).
 
 Cada formato debería:
 

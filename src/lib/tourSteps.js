@@ -1,8 +1,38 @@
 /**
  * driver.js tour steps per view. Selectors use data-tour attributes.
+ * El tour de competición se adapta al formato activo.
  */
 
+import { getFormat } from './formats/index.js'
+
 /** @typedef {{ element?: string, popover: { title: string, description: string, side?: string, align?: string } }} TourStep */
+
+/**
+ * Descripción de la vista de competición según el formato.
+ * @type {Record<string, { title: string, description: string }>}
+ */
+const FORMAT_TOUR = {
+  e: {
+    title: 'Bracket interactivo',
+    description:
+      'Haz clic en un jugador para que avance. Arrastra, usa la rueda (vertical) o Ctrl+rueda (horizontal). Zoom con los botones.',
+  },
+  d: {
+    title: 'Doble eliminación',
+    description:
+      'Arriba el bracket de ganadores, abajo el de perdedores y a la derecha la gran final. Haz clic en un jugador para decidir el partido.',
+  },
+  r: {
+    title: 'Clasificación y jornadas',
+    description:
+      'Arriba la tabla de clasificación y abajo las jornadas. Escribe el marcador de cada partido con los dos campos numéricos.',
+  },
+  s: {
+    title: 'Rondas suizas',
+    description:
+      'Genera una ronda nueva cuando la anterior esté completa. El emparejamiento evita revanchas y los descansos suman un punto.',
+  },
+}
 
 /** @type {Record<'setup'|'competition', TourStep[]>} */
 export const TOUR_STEPS = {
@@ -12,7 +42,7 @@ export const TOUR_STEPS = {
       popover: {
         title: 'Configura tu torneo',
         description:
-          'Desde aquí defines nombre, formato y participantes antes de generar el bracket.',
+          'Desde aquí defines nombre, formato y participantes antes de generar el torneo.',
         side: 'bottom',
       },
     },
@@ -20,7 +50,7 @@ export const TOUR_STEPS = {
       element: '[data-tour="setup-name"]',
       popover: {
         title: 'Nombre',
-        description: 'Obligatorio. Aparecerá como título del bracket.',
+        description: 'Obligatorio. Aparecerá como título del torneo.',
         side: 'bottom',
       },
     },
@@ -29,7 +59,16 @@ export const TOUR_STEPS = {
       popover: {
         title: 'Formato',
         description:
-          'Hoy está disponible Eliminación simple. Otros formatos están documentados como próximos.',
+          'Eliminación simple, doble eliminación, todos contra todos o suizo. Cada uno tiene sus propias reglas.',
+        side: 'bottom',
+      },
+    },
+    {
+      element: '[data-tour="setup-options"]',
+      popover: {
+        title: 'Opciones del formato',
+        description:
+          'Ajustes del formato elegido: doble vuelta, puntos, número de rondas…',
         side: 'bottom',
       },
     },
@@ -54,7 +93,7 @@ export const TOUR_STEPS = {
     {
       element: '[data-tour="setup-submit"]',
       popover: {
-        title: 'Crear bracket',
+        title: 'Crear torneo',
         description:
           'Cuando el formulario es válido, genera el cuadro y te lleva a la competición.',
         side: 'top',
@@ -83,7 +122,8 @@ export const TOUR_STEPS = {
       element: '[data-tour="competition-reshuffle"]',
       popover: {
         title: 'Reordenar',
-        description: 'Mezcla las semillas y reinicia el progreso (pide confirmación).',
+        description:
+          'Reinicia el progreso del torneo según el formato (pide confirmación).',
         side: 'bottom',
       },
     },
@@ -91,7 +131,8 @@ export const TOUR_STEPS = {
       element: '[data-tour="competition-update"]',
       popover: {
         title: 'Actualizar',
-        description: 'Cambia la lista de jugadores. También reinicia el bracket.',
+        description:
+          'Cambia la lista de jugadores. También reinicia el torneo.',
         side: 'bottom',
       },
     },
@@ -107,18 +148,9 @@ export const TOUR_STEPS = {
     {
       element: '[data-tour="competition-bracket"]',
       popover: {
-        title: 'Bracket interactivo',
-        description:
-          'Haz clic en un jugador para que avance. Arrastra, usa la rueda (vertical) o Ctrl+rueda (horizontal). Zoom con los botones.',
+        title: 'Vista del torneo',
+        description: 'Clic en un jugador para que avance.',
         side: 'top',
-      },
-    },
-    {
-      element: '[data-tour="competition-hint"]',
-      popover: {
-        title: 'Cambiar ganador',
-        description: 'Si te equivocas, haz clic en el rival del mismo partido.',
-        side: 'bottom',
       },
     },
   ],
@@ -126,8 +158,29 @@ export const TOUR_STEPS = {
 
 /**
  * @param {'setup'|'competition'} view
+ * @param {string} [formatId] Id del formato activo (`e`, `d`, `r`, `s`).
  * @returns {TourStep[]}
  */
-export function getTourSteps(view) {
-  return TOUR_STEPS[view] || TOUR_STEPS.setup
+export function getTourSteps(view, formatId) {
+  const steps = TOUR_STEPS[view] || TOUR_STEPS.setup
+  if (view !== 'competition') return steps
+
+  const formatTour = FORMAT_TOUR[formatId] ?? FORMAT_TOUR.e
+  const formatEntry = getFormat(formatId)
+  return steps.map((step) => {
+    if (step.element === '[data-tour="competition-bracket"]') {
+      return { ...step, popover: { ...step.popover, ...formatTour } }
+    }
+    if (step.element === '[data-tour="competition-reshuffle"]') {
+      return {
+        ...step,
+        popover: {
+          ...step.popover,
+          title: formatEntry?.reorderLabel ?? step.popover.title,
+          description: formatEntry?.reorderMessage ?? step.popover.description,
+        },
+      }
+    }
+    return step
+  })
 }

@@ -19,8 +19,8 @@ import {
 const view = ref('setup')
 /** @type {import('vue').Ref<object|null>} */
 const competitionData = ref(null)
-/** @type {import('vue').Ref<object|null>} */
-const bracket = ref(null)
+/** @type {import('vue').Ref<import('../lib/sessionSnapshot.js').TournamentState|null>} */
+const state = ref(null)
 const hydrated = ref(false)
 const shareLoadError = ref(false)
 
@@ -32,7 +32,7 @@ export function useSession() {
     createSnapshot({
       view: view.value,
       competitionData: competitionData.value,
-      bracket: bracket.value,
+      state: state.value,
     })
   )
 
@@ -53,12 +53,12 @@ export function useSession() {
       if (isShortShareId(sharePayload)) {
         const remote = await loadShortShare(sharePayload)
         if (remote) payloadForDecode = remote
-        else if (!sharePayload.startsWith('v1.') && !sharePayload.startsWith('v2.')) {
+        else if (!sharePayload.startsWith('v1.') && !sharePayload.startsWith('v2.') && !sharePayload.startsWith('v3.')) {
           clearShareHash()
           shareLoadError.value = true
           view.value = 'setup'
           competitionData.value = null
-          bracket.value = null
+          state.value = null
           hydrated.value = true
           return { fromShare: true, error: true }
         }
@@ -70,7 +70,7 @@ export function useSession() {
       if (decoded) {
         view.value = decoded.view
         competitionData.value = decoded.competitionData
-        bracket.value = decoded.bracket
+        state.value = decoded.state
         hydrated.value = true
         persist()
         return { fromShare: true, error: false }
@@ -78,7 +78,7 @@ export function useSession() {
       shareLoadError.value = true
       view.value = 'setup'
       competitionData.value = null
-      bracket.value = null
+      state.value = null
       hydrated.value = true
       return { fromShare: true, error: true }
     }
@@ -87,7 +87,7 @@ export function useSession() {
     if (stored) {
       view.value = stored.view
       competitionData.value = stored.competitionData
-      bracket.value = stored.bracket
+      state.value = stored.state
     }
     hydrated.value = true
     return { fromShare: false, error: false }
@@ -95,16 +95,16 @@ export function useSession() {
 
   /**
    * @param {object} data
-   * @param {object|null} [nextBracket]
+   * @param {object|null} [nextState]
    */
-  function startCompetition(data, nextBracket = null) {
+  function startCompetition(data, nextState = null) {
     competitionData.value = {
       ...data,
       tournamentPlayers: Array.isArray(data.tournamentPlayers)
         ? [...data.tournamentPlayers]
         : [],
     }
-    bracket.value = nextBracket
+    state.value = nextState
     view.value = 'competition'
     persist()
   }
@@ -117,8 +117,8 @@ export function useSession() {
   /**
    * @param {object|null} next
    */
-  function setBracket(next) {
-    bracket.value = next
+  function setState(next) {
+    state.value = next
     persist()
   }
 
@@ -126,17 +126,22 @@ export function useSession() {
    * @param {object} data
    */
   function setCompetitionData(data) {
-    competitionData.value = {
+    const next = {
       ...data,
       tournamentPlayers: Array.isArray(data.tournamentPlayers)
         ? [...data.tournamentPlayers]
         : [],
     }
+    const formatChanged =
+      competitionData.value?.tournamentFormat !== next.tournamentFormat
+    competitionData.value = next
+    // Evita compartir/rehidratar un motor con el formato equivocado.
+    if (formatChanged) state.value = null
     persist()
   }
 
   /**
-   * Long v2 hash URL (sync).
+   * Long v3 hash URL (sync).
    * @returns {string|null}
    */
   function getShareUrl() {
@@ -144,7 +149,7 @@ export function useSession() {
   }
 
   /**
-   * Short Firestore link when configured, else v2 hash URL.
+   * Short Firestore link when configured, else v3 hash URL.
    * @returns {Promise<string|null>}
    */
   async function createShareUrl() {
@@ -156,7 +161,7 @@ export function useSession() {
   return {
     view,
     competitionData,
-    bracket,
+    state,
     hydrated,
     shareLoadError,
     snapshot,
@@ -164,7 +169,7 @@ export function useSession() {
     persist,
     startCompetition,
     goToSetup,
-    setBracket,
+    setState,
     setCompetitionData,
     getShareUrl,
     createShareUrl,

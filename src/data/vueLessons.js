@@ -56,16 +56,16 @@ export const VUE_LESSONS = {
           'La ruta `/competition` carga su vista bajo demanda. Eso reduce el peso inicial: el código del bracket se descarga cuando lo necesitas.',
       },
       {
-        title: 'Composable useBracket',
+        title: 'Composable useTournament',
         concept: 'Composition API',
         body:
-          '`useBracket` concentra la lógica del torneo (semillas, rondas, avanzar ganador). El componente consume `bracket`, `champion` y métodos como `advance` sin mezclar reglas de negocio en el template.',
+          '`useTournament` concentra la lógica del torneo (estado, campeón, aplicar resultado) y la delega en el motor del formato. El componente consume `state`, `champion` y métodos como `applyResult` sin mezclar reglas de negocio en el template.',
       },
       {
         title: 'Props y eventos',
         concept: 'props + emit',
         body:
-          '`Competition` recibe `competitionData` por props. `Brackets` emite `@select-winner` al hacer clic en un slot; el padre intenta avanzar y muestra un toast.',
+          '`Competition` recibe `competitionData` por props y resuelve la vista según el formato. `Brackets` emite `@apply-result` al hacer clic en un slot; el padre lo aplica y muestra un toast.',
       },
       {
         title: 'Título computado',

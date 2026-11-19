@@ -1,17 +1,18 @@
 <template>
   <Competition
     v-if="competitionData"
+    :key="competitionData.tournamentFormat"
     :competition-data="competitionData"
-    :initial-bracket="bracket"
+    :initial-state="state"
     @go-back="onGoBack"
-    @bracket-change="onBracketChange"
+    @state-change="onStateChange"
     @competition-data-change="onCompetitionDataChange"
   />
   <p v-else class="text-live">Cargando competición…</p>
 </template>
 
 <script setup>
-import { onMounted, watch } from 'vue'
+import { watch } from 'vue'
 import { useRouter } from 'vue-router'
 import Competition from '../components/Competition.vue'
 import { useSession } from '../composables/useSession.js'
@@ -19,23 +20,21 @@ import { useSession } from '../composables/useSession.js'
 const router = useRouter()
 const {
   competitionData,
-  bracket,
+  state,
+  hydrated,
   goToSetup,
-  setBracket,
+  setState,
   setCompetitionData,
 } = useSession()
 
-onMounted(() => {
-  if (!competitionData.value) {
-    router.replace({ name: 'setup' })
-  }
-})
-
+// Esperar a hydrate: un redirect antes de leer `#s=` borra el hash del enlace.
 watch(
-  competitionData,
-  (value) => {
-    if (!value) router.replace({ name: 'setup' })
-  }
+  [hydrated, competitionData],
+  ([ready, data]) => {
+    if (!ready) return
+    if (!data) router.replace({ name: 'setup' })
+  },
+  { immediate: true }
 )
 
 function onGoBack() {
@@ -43,8 +42,8 @@ function onGoBack() {
   router.push({ name: 'setup' })
 }
 
-function onBracketChange(next) {
-  setBracket(next)
+function onStateChange(next) {
+  setState(next)
 }
 
 function onCompetitionDataChange(next) {

@@ -1,20 +1,21 @@
 import LZString from 'lz-string'
 import { parsePlayers } from '../utils/players.js'
 import {
-  collectContestedWinners,
-  rebuildBracketFromWinners,
-} from './bracket.js'
+  getFormat,
+  normalizeFormatOptions,
+  resolveFormatId,
+} from './formats/index.js'
 
-export const STORAGE_KEY = 'cbg:v1'
-export const SNAPSHOT_VERSION = 1
+export const STORAGE_KEY = 'cbg:v2'
+export const LEGACY_STORAGE_KEY = 'cbg:v1'
+export const SNAPSHOT_VERSION = 2
+export const LEGACY_SNAPSHOT_VERSION = 1
 export const SHARE_PREFIX = 'v1.'
 export const SHARE_PREFIX_V2 = 'v2.'
+export const SHARE_PREFIX_V3 = 'v3.'
 
-const FORMAT_TO_CODE = {
-  'Eliminación simple': 'e',
-}
-
-const CODE_TO_FORMAT = {
+/** Códigos de formato de los enlaces v2 (solo eliminación simple). */
+const LEGACY_CODE_TO_FORMAT = {
   e: 'Eliminación simple',
 }
 
@@ -23,14 +24,17 @@ const CODE_TO_FORMAT = {
 /**
  * @typedef {Object} CompetitionData
  * @property {string} tournamentName
- * @property {string} tournamentFormat
+ * @property {string} tournamentFormat Id de formato (`e`, `d`, `r`, `s`).
  * @property {string[]} tournamentPlayers
+ * @property {Object} tournamentOptions Opciones del formato.
  */
 
 /**
- * @typedef {Object} BracketSnapshot
- * @property {string[]} seeds
- * @property {Array<Array<{ id: string, p1: string|null, p2: string|null, winner: string|null }>>} rounds
+ * Estado de un torneo: `{ format, data }` donde `data` es el estado del motor.
+ *
+ * @typedef {Object} TournamentState
+ * @property {string} format
+ * @property {Object} data
  */
 
 /**
@@ -38,62 +42,73 @@ const CODE_TO_FORMAT = {
  * @property {number} v
  * @property {AppView} view
  * @property {CompetitionData|null} competitionData
- * @property {BracketSnapshot|null} bracket
+ * @property {TournamentState|null} state
  */
 
 /**
  * @typedef {Object} CompactShare
- * @property {2} v
+ * @property {3} v
  * @property {'s'|'c'} view
  * @property {string} [n]
  * @property {string} [f]
  * @property {string[]} [p]
- * @property {number[]} [s]
- * @property {number[]} [w]
+ * @property {Object} [o]
+ * @property {unknown} [x]
  */
 
 /**
- * @param {unknown} value
- * @returns {value is CompetitionData}
+ * Normaliza `competitionData`: id de formato, participantes y opciones planas.
+ * @param {unknown} raw
+ * @returns {CompetitionData|null}
  */
-function isCompetitionData(value) {
-  if (!value || typeof value !== 'object') return false
-  const data = /** @type {Record<string, unknown>} */ (value)
-  if (typeof data.tournamentName !== 'string') return false
-  if (typeof data.tournamentFormat !== 'string') return false
+export function normalizeCompetitionData(raw) {
+  if (!raw || typeof raw !== 'object') return null
+  const data = /** @type {Record<string, unknown>} */ (raw)
+  if (typeof data.tournamentName !== 'string') return null
+
+  const formatId = resolveFormatId(data.tournamentFormat)
+  if (!formatId) return null
+
   const players = Array.isArray(data.tournamentPlayers)
-    ? data.tournamentPlayers
+    ? data.tournamentPlayers.map(String)
     : typeof data.tournamentPlayers === 'string'
       ? parsePlayers(data.tournamentPlayers)
       : null
-  return Array.isArray(players) && players.length >= 2
+  if (!Array.isArray(players) || players.length < 2) return null
+
+  return {
+    tournamentName: String(data.tournamentName),
+    tournamentFormat: formatId,
+    tournamentPlayers: players,
+    tournamentOptions: normalizeFormatOptions(data.tournamentOptions),
+  }
 }
 
 /**
- * @param {unknown} value
- * @returns {value is BracketSnapshot}
+ * Normaliza el estado de torneo. Acepta el shape nuevo `{ format, data }`
+ * y, por compatibilidad, un bracket legacy `{ seeds, rounds }`.
+ * @param {unknown} raw
+ * @returns {TournamentState|null}
  */
-function isBracketSnapshot(value) {
-  if (!value || typeof value !== 'object') return false
-  const bracket = /** @type {Record<string, unknown>} */ (value)
-  if (!Array.isArray(bracket.seeds) || !Array.isArray(bracket.rounds)) return false
-  return bracket.rounds.every(
-    (round) =>
-      Array.isArray(round) &&
-      round.every(
-        (match) =>
-          match &&
-          typeof match === 'object' &&
-          typeof match.id === 'string' &&
-          'p1' in match &&
-          'p2' in match &&
-          'winner' in match
-      )
-  )
+export function normalizeState(raw) {
+  if (!raw || typeof raw !== 'object') return null
+  const value = /** @type {Record<string, unknown>} */ (raw)
+
+  if (typeof value.format === 'string' && value.data) {
+    const format = getFormat(value.format)
+    if (!format) return null
+    if (!format.engine.validateState(value.data)) return null
+    return { format: format.id, data: value.data }
+  }
+
+  // Shape legacy: bracket de eliminación simple.
+  const single = getFormat('e')
+  if (!single?.engine.validateState(value)) return null
+  return { format: single.id, data: value }
 }
 
 /**
- * Normalize and validate a raw snapshot object.
+ * Normaliza y valida un snapshot en bruto (acepta v1 y v2).
  * @param {unknown} raw
  * @returns {SessionSnapshot|null}
  */
@@ -101,36 +116,77 @@ export function validateSnapshot(raw) {
   if (!raw || typeof raw !== 'object') return null
   const obj = /** @type {Record<string, unknown>} */ (raw)
   const v = Number(obj.v)
+  if (v === LEGACY_SNAPSHOT_VERSION) return migrateLegacySnapshot(obj)
   if (v !== SNAPSHOT_VERSION) return null
 
   const view = obj.view === 'competition' ? 'competition' : 'setup'
-  let competitionData = null
 
+  let competitionData = null
   if (obj.competitionData != null) {
-    if (!isCompetitionData(obj.competitionData)) return null
-    const rawData = /** @type {Record<string, unknown>} */ (obj.competitionData)
-    competitionData = {
-      tournamentName: String(rawData.tournamentName),
-      tournamentFormat: String(rawData.tournamentFormat),
-      tournamentPlayers: Array.isArray(rawData.tournamentPlayers)
-        ? rawData.tournamentPlayers.map(String)
-        : parsePlayers(String(rawData.tournamentPlayers)),
-    }
+    competitionData = normalizeCompetitionData(obj.competitionData)
+    if (!competitionData) return null
   }
 
-  let bracket = null
-  if (obj.bracket != null) {
-    if (!isBracketSnapshot(obj.bracket)) return null
-    bracket = /** @type {BracketSnapshot} */ (obj.bracket)
+  let state = null
+  if (obj.state != null) {
+    state = normalizeState(obj.state)
+    if (!state) return null
   }
 
   if (view === 'competition' && !competitionData) return null
+
+  // Estado de otro formato no se puede decodificar/aplicar: se descarta.
+  if (
+    state &&
+    competitionData &&
+    state.format !== competitionData.tournamentFormat
+  ) {
+    state = null
+  }
 
   return {
     v: SNAPSHOT_VERSION,
     view,
     competitionData,
-    bracket,
+    state,
+  }
+}
+
+/**
+ * Migra un snapshot v1 (`bracket` plano) al shape v2 (`state` con formato).
+ * @param {Record<string, unknown>} obj
+ * @returns {SessionSnapshot|null}
+ */
+function migrateLegacySnapshot(obj) {
+  const view = obj.view === 'competition' ? 'competition' : 'setup'
+
+  let competitionData = null
+  if (obj.competitionData != null) {
+    competitionData = normalizeCompetitionData(obj.competitionData)
+    if (!competitionData) return null
+  }
+
+  let state = null
+  if (obj.bracket != null) {
+    state = normalizeState(obj.bracket)
+    if (!state) return null
+  }
+
+  if (view === 'competition' && !competitionData) return null
+
+  if (
+    state &&
+    competitionData &&
+    state.format !== competitionData.tournamentFormat
+  ) {
+    state = null
+  }
+
+  return {
+    v: SNAPSHOT_VERSION,
+    view,
+    competitionData,
+    state,
   }
 }
 
@@ -138,16 +194,37 @@ export function validateSnapshot(raw) {
  * @param {{
  *   view?: AppView,
  *   competitionData?: CompetitionData|null,
- *   bracket?: BracketSnapshot|null,
+ *   state?: TournamentState|null,
+ *   bracket?: unknown,
  * }} partial
  * @returns {SessionSnapshot}
  */
 export function createSnapshot(partial = {}) {
+  const competitionData = partial.competitionData
+    ? normalizeCompetitionData(partial.competitionData)
+    : null
+
+  const rawState =
+    partial.state != null
+      ? partial.state
+      : partial.bracket != null
+        ? { format: 'e', data: partial.bracket }
+        : null
+
+  let state = normalizeState(rawState)
+  if (
+    state &&
+    competitionData &&
+    state.format !== competitionData.tournamentFormat
+  ) {
+    state = null
+  }
+
   return {
     v: SNAPSHOT_VERSION,
     view: partial.view === 'competition' ? 'competition' : 'setup',
-    competitionData: partial.competitionData ?? null,
-    bracket: partial.bracket ?? null,
+    competitionData,
+    state,
   }
 }
 
@@ -178,8 +255,15 @@ export function parseSnapshot(text) {
 export function loadFromLocalStorage(storage = localStorage) {
   try {
     const raw = storage.getItem(STORAGE_KEY)
-    if (!raw) return null
-    return parseSnapshot(raw)
+    if (raw) {
+      const parsed = parseSnapshot(raw)
+      if (parsed) return parsed
+    }
+
+    // Sesiones guardadas con la versión anterior del formato.
+    const legacy = storage.getItem(LEGACY_STORAGE_KEY)
+    if (!legacy) return null
+    return parseSnapshot(legacy)
   } catch {
     return null
   }
@@ -196,43 +280,8 @@ export function saveToLocalStorage(snapshot, storage = localStorage) {
 }
 
 /**
- * @param {string} format
- * @returns {string}
- */
-function formatToCode(format) {
-  return FORMAT_TO_CODE[format] ?? 'e'
-}
-
-/**
- * @param {unknown} code
- * @returns {string}
- */
-function codeToFormat(code) {
-  if (typeof code !== 'string') return CODE_TO_FORMAT.e
-  return CODE_TO_FORMAT[code] ?? CODE_TO_FORMAT.e
-}
-
-/**
- * @param {string[]} players
- * @param {string} name
- * @returns {number}
- */
-function playerIndex(players, name) {
-  const key = String(name).toLowerCase()
-  return players.findIndex((player) => player.toLowerCase() === key)
-}
-
-/**
- * @param {string[]} players
- * @returns {boolean}
- */
-function isIdentitySeedOrder(players, seedIndexes) {
-  if (seedIndexes.length !== players.length) return false
-  return seedIndexes.every((index, i) => index === i)
-}
-
-/**
- * Compact a validated snapshot for share URLs.
+ * Compact a validated snapshot for share URLs (v3).
+ * `x` es el payload opaco del motor de formato.
  * @param {SessionSnapshot} snapshot
  * @returns {CompactShare|null}
  */
@@ -242,45 +291,28 @@ export function toCompactShare(snapshot) {
 
   /** @type {CompactShare} */
   const compact = {
-    v: 2,
+    v: 3,
     view: valid.view === 'competition' ? 'c' : 's',
   }
 
   if (valid.competitionData) {
     const players = valid.competitionData.tournamentPlayers.map(String)
     compact.n = valid.competitionData.tournamentName
-    compact.f = formatToCode(valid.competitionData.tournamentFormat)
+    compact.f = valid.competitionData.tournamentFormat
     compact.p = players
 
-    if (valid.bracket && Array.isArray(valid.bracket.seeds)) {
-      const seedIndexes = valid.bracket.seeds.map((seed) =>
-        playerIndex(players, seed)
-      )
-      if (seedIndexes.some((index) => index < 0)) return null
-      if (!isIdentitySeedOrder(players, seedIndexes)) {
-        compact.s = seedIndexes
-      }
+    const options = valid.competitionData.tournamentOptions
+    if (options && Object.keys(options).length > 0) compact.o = options
 
-      const winnerNames = collectContestedWinners(valid.bracket)
-      /** @type {number[]} */
-      const winnerIndexes = []
-      for (const name of winnerNames) {
-        if (name == null) {
-          winnerIndexes.push(-1)
-          continue
-        }
-        const index = playerIndex(players, name)
-        if (index < 0) return null
-        winnerIndexes.push(index)
-      }
-      while (
-        winnerIndexes.length > 0 &&
-        winnerIndexes[winnerIndexes.length - 1] < 0
-      ) {
-        winnerIndexes.pop()
-      }
-      // Always include w when a bracket exists so decode rebuilds it (even with no picks).
-      compact.w = winnerIndexes
+    if (valid.state) {
+      const format = getFormat(valid.state.format)
+      if (!format) return null
+      const encoded = format.engine.encode(valid.state.data, {
+        players,
+        options: valid.competitionData.tournamentOptions,
+      })
+      if (encoded == null) return null
+      compact.x = encoded
     }
   } else if (valid.view === 'competition') {
     return null
@@ -290,14 +322,16 @@ export function toCompactShare(snapshot) {
 }
 
 /**
- * Expand a compact share payload into a session snapshot.
+ * Expande un payload compacto v3 en un snapshot de sesión.
  * @param {unknown} compact
  * @returns {SessionSnapshot|null}
  */
 export function fromCompactShare(compact) {
   if (!compact || typeof compact !== 'object') return null
   const raw = /** @type {Record<string, unknown>} */ (compact)
-  if (Number(raw.v) !== 2) return null
+  const v = Number(raw.v)
+  if (v === 2) return fromLegacyCompactShare(raw)
+  if (v !== 3) return null
 
   const view = raw.view === 'c' ? 'competition' : 'setup'
   const players = Array.isArray(raw.p) ? raw.p.map(String) : []
@@ -306,47 +340,74 @@ export function fromCompactShare(compact) {
   if (players.length >= 2 && typeof raw.n === 'string') {
     competitionData = {
       tournamentName: raw.n,
-      tournamentFormat: codeToFormat(raw.f),
+      tournamentFormat: resolveFormatId(raw.f) ?? 'e',
       tournamentPlayers: players,
+      tournamentOptions: normalizeFormatOptions(raw.o),
     }
   }
 
   if (view === 'competition' && !competitionData) return null
 
-  let bracket = null
-  if (competitionData && (Array.isArray(raw.s) || Array.isArray(raw.w))) {
-    let seedIndexes = Array.isArray(raw.s)
-      ? raw.s.map((value) => Number(value))
-      : players.map((_, i) => i)
-
-    if (
-      seedIndexes.length !== players.length ||
-      seedIndexes.some(
-        (index) =>
-          !Number.isInteger(index) || index < 0 || index >= players.length
-      )
-    ) {
-      return null
-    }
-
-    const seeds = seedIndexes.map((index) => players[index])
-    const winnerIndexes = Array.isArray(raw.w)
-      ? raw.w.map((value) => Number(value))
-      : []
-    const winnerNames = winnerIndexes.map((index) => {
-      if (!Number.isInteger(index) || index < 0) return null
-      if (index >= players.length) return null
-      return players[index]
+  let state = null
+  if (competitionData && raw.x != null) {
+    const format = getFormat(competitionData.tournamentFormat)
+    if (!format) return null
+    const data = format.engine.decode(raw.x, {
+      players,
+      options: competitionData.tournamentOptions,
     })
-
-    bracket = rebuildBracketFromWinners(seeds, winnerNames)
+    if (!data) return null
+    state = { format: format.id, data }
   }
 
   return validateSnapshot({
     v: SNAPSHOT_VERSION,
     view,
     competitionData,
-    bracket,
+    state,
+  })
+}
+
+/**
+ * Expande un payload compacto v2 (solo eliminación simple).
+ * @param {Record<string, unknown>} raw
+ * @returns {SessionSnapshot|null}
+ */
+function fromLegacyCompactShare(raw) {
+  const view = raw.view === 'c' ? 'competition' : 'setup'
+  const players = Array.isArray(raw.p) ? raw.p.map(String) : []
+
+  let competitionData = null
+  if (players.length >= 2 && typeof raw.n === 'string') {
+    competitionData = {
+      tournamentName: raw.n,
+      tournamentFormat:
+        resolveFormatId(
+          typeof raw.f === 'string' ? LEGACY_CODE_TO_FORMAT[raw.f] : undefined
+        ) ?? 'e',
+      tournamentPlayers: players,
+      tournamentOptions: {},
+    }
+  }
+
+  if (view === 'competition' && !competitionData) return null
+
+  let state = null
+  if (competitionData && (Array.isArray(raw.s) || Array.isArray(raw.w))) {
+    const format = getFormat('e')
+    const data = format?.engine.decode(
+      { s: raw.s, w: raw.w },
+      { players }
+    )
+    if (!data) return null
+    state = { format: format.id, data }
+  }
+
+  return validateSnapshot({
+    v: SNAPSHOT_VERSION,
+    view,
+    competitionData,
+    state,
   })
 }
 
@@ -390,13 +451,19 @@ function decompressB64urlToJson(b64url) {
 export function encodeSharePayloadV1(snapshot) {
   const valid = validateSnapshot(snapshot)
   if (!valid) return null
-  const b64 = compressJsonToB64url(serializeSnapshot(valid))
+  const legacy = {
+    v: LEGACY_SNAPSHOT_VERSION,
+    view: valid.view,
+    competitionData: valid.competitionData,
+    bracket: valid.state?.format === 'e' ? valid.state.data : null,
+  }
+  const b64 = compressJsonToB64url(JSON.stringify(legacy))
   if (!b64) return null
   return `${SHARE_PREFIX}${b64}`
 }
 
 /**
- * Compress snapshot for URL hash payload (compact v2).
+ * Compress snapshot for URL hash payload (compact v3).
  * @param {SessionSnapshot} snapshot
  * @returns {string|null}
  */
@@ -405,7 +472,7 @@ export function encodeSharePayload(snapshot) {
   if (!compact) return null
   const b64 = compressJsonToB64url(JSON.stringify(compact))
   if (!b64) return null
-  return `${SHARE_PREFIX_V2}${b64}`
+  return `${SHARE_PREFIX_V3}${b64}`
 }
 
 /**
@@ -416,6 +483,12 @@ export function decodeSharePayload(payload) {
   if (typeof payload !== 'string') return null
 
   try {
+    if (payload.startsWith(SHARE_PREFIX_V3)) {
+      const json = decompressB64urlToJson(payload.slice(SHARE_PREFIX_V3.length))
+      if (!json) return null
+      return fromCompactShare(JSON.parse(json))
+    }
+
     if (payload.startsWith(SHARE_PREFIX_V2)) {
       const json = decompressB64urlToJson(payload.slice(SHARE_PREFIX_V2.length))
       if (!json) return null
@@ -465,7 +538,7 @@ export function buildShareUrl(snapshot, opts = {}) {
 }
 
 /**
- * Clear share hash from the address bar without reloading (long v1/v2 payloads only).
+ * Clear share hash from the address bar without reloading (long v1/v2/v3 payloads only).
  */
 export function clearShareHash() {
   if (typeof history === 'undefined' || typeof location === 'undefined') return

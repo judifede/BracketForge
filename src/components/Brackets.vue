@@ -1,64 +1,12 @@
 <template>
-  <div
-    class="bracket-scroll-wrap relative w-full max-w-full"
-    data-tour="bracket-viewport"
-    title="Clic en un rival para elegir o corregir el ganador"
-  >
-    <div class="absolute right-8 bottom-8 z-[3] flex flex-col-reverse items-end gap-[0.35rem]">
-      <div class="zoom-controls" data-tour="bracket-zoom">
-        <button type="button" class="zoom-btn" aria-label="Alejar" @click="zoomOut">−</button>
-        <span class="min-w-[2.6rem] text-center text-[0.72rem] font-semibold text-text-muted">
-          {{ Math.round(scale * 100) }}%
-        </span>
-        <button type="button" class="zoom-btn" aria-label="Acercar" @click="zoomIn">+</button>
-        <button type="button" class="zoom-btn zoom-btn--wide" @click="resetView">Reset</button>
-      </div>
-      <p
-        v-if="showScrollHint"
-        class="scroll-hint"
-        role="status"
-        aria-live="polite"
-      >
-        Rueda · Ctrl+rueda <span aria-hidden="true">↔</span>
-        <span class="sr-only">: rueda vertical, Ctrl+rueda horizontal</span>
-      </p>
-    </div>
-
-    <div
-      ref="scrollEl"
-      class="bracket-scroll"
-      :class="{ 'is-panning': isPanning }"
-      @wheel.prevent="onWheel"
-      @pointerdown="onPointerDown"
-      @pointermove="onPointerMove"
-      @pointerup="onPointerUp"
-      @pointercancel="onPointerUp"
-      @scroll.passive="onBracketScroll"
+  <BracketViewport :width="layout.width" :height="layout.height">
+    <svg
+      :width="layout.width"
+      :height="layout.height"
+      role="img"
+      :aria-labelledby="titleId"
+      class="bracket-svg block"
     >
-      <div
-        class="overflow-hidden shrink-0"
-        :style="{
-          width: `${layout.width * scale}px`,
-          height: `${layout.height * scale}px`,
-        }"
-      >
-        <div
-          class="transition-transform duration-[120ms] ease-out"
-          :style="{
-            width: `${layout.width}px`,
-            height: `${layout.height}px`,
-            transform: `scale(${scale})`,
-            transformOrigin: '0 0',
-          }"
-        >
-        <svg
-          ref="svgEl"
-          :width="layout.width"
-          :height="layout.height"
-          role="img"
-          :aria-labelledby="titleId"
-          class="bracket-svg block"
-        >
           <title :id="titleId">
             Clic en un rival para elegir o corregir el ganador.
           </title>
@@ -329,20 +277,19 @@
             </text>
           </g>
         </svg>
-        </div>
-      </div>
-    </div>
-
-  </div>
+  </BracketViewport>
 </template>
 
 <script setup>
-import { computed, ref, watch, nextTick, onMounted, onUnmounted } from 'vue'
+import { computed } from 'vue'
+import BracketViewport from './BracketViewport.vue'
 import { computeBracketLayout, LAYOUT } from '../lib/bracketLayout.js'
+import { singleElimination } from '../lib/formats/singleElimination.js'
 import { playerSlotLabel } from '../utils/slotLabel.js'
 
 const props = defineProps({
-  bracket: {
+  /** Estado del motor de eliminación simple (`{ seeds, rounds }`). */
+  state: {
     type: Object,
     required: true,
   },
@@ -352,7 +299,7 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['select-winner'])
+const emit = defineEmits(['apply-result'])
 
 const titleId = 'bracket-svg-title'
 const slotWidth = LAYOUT.slotWidth
@@ -382,130 +329,7 @@ function winnerFramePoints(slot, side) {
   return `${x},${midY} ${x},${y + h} ${x + w},${y + h} ${x + w},${midY} ${exitX},${midY}`
 }
 
-const scrollEl = ref(null)
-const svgEl = ref(null)
-const hasOverflow = ref(false)
-const hintDismissed = ref(false)
-const scale = ref(1)
-const isPanning = ref(false)
-const panStart = ref({ x: 0, y: 0, left: 0, top: 0 })
-
-const showScrollHint = computed(
-  () => hasOverflow.value && !hintDismissed.value
-)
-
-function checkOverflow() {
-  const el = scrollEl.value
-  if (!el) {
-    hasOverflow.value = false
-    return
-  }
-  const overflowing =
-    el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1
-  hasOverflow.value = overflowing
-  if (!overflowing) {
-    hintDismissed.value = false
-  }
-}
-
-function onBracketScroll() {
-  const el = scrollEl.value
-  if (!el) return
-  if (el.scrollLeft > 2 || el.scrollTop > 2) {
-    hintDismissed.value = true
-  }
-}
-
-function clampScale(value) {
-  return Math.min(2.5, Math.max(0.45, value))
-}
-
-function zoomIn() {
-  scale.value = clampScale(scale.value + 0.1)
-  hintDismissed.value = true
-}
-
-function zoomOut() {
-  scale.value = clampScale(scale.value - 0.1)
-  hintDismissed.value = true
-}
-
-function resetView() {
-  scale.value = 1
-  if (scrollEl.value) {
-    scrollEl.value.scrollLeft = 0
-    scrollEl.value.scrollTop = 0
-  }
-}
-
-function onWheel(event) {
-  if (!scrollEl.value) return
-  if (event.ctrlKey || event.metaKey) {
-    scrollEl.value.scrollLeft += event.deltaY
-  } else {
-    scrollEl.value.scrollTop += event.deltaY
-    scrollEl.value.scrollLeft += event.deltaX
-  }
-  hintDismissed.value = true
-}
-
-function onPointerDown(event) {
-  if (event.button !== 0 || !scrollEl.value) return
-  if (event.target.closest('[role="button"]')) return
-  isPanning.value = true
-  panStart.value = {
-    x: event.clientX,
-    y: event.clientY,
-    left: scrollEl.value.scrollLeft,
-    top: scrollEl.value.scrollTop,
-  }
-  scrollEl.value.setPointerCapture?.(event.pointerId)
-}
-
-function onPointerMove(event) {
-  if (!isPanning.value || !scrollEl.value) return
-  const dx = event.clientX - panStart.value.x
-  const dy = event.clientY - panStart.value.y
-  scrollEl.value.scrollLeft = panStart.value.left - dx
-  scrollEl.value.scrollTop = panStart.value.top - dy
-  hintDismissed.value = true
-}
-
-function onPointerUp(event) {
-  if (!isPanning.value) return
-  isPanning.value = false
-  scrollEl.value?.releasePointerCapture?.(event.pointerId)
-}
-
-let resizeObserver = null
-
-onMounted(() => {
-  const el = scrollEl.value
-  if (!el || typeof ResizeObserver === 'undefined') {
-    checkOverflow()
-    return
-  }
-  resizeObserver = new ResizeObserver(() => {
-    checkOverflow()
-  })
-  resizeObserver.observe(el)
-  checkOverflow()
-})
-
-onUnmounted(() => {
-  resizeObserver?.disconnect()
-  resizeObserver = null
-})
-
-const layout = computed(() => computeBracketLayout(props.bracket))
-
-watch(
-  () => [layout.value.width, scale.value],
-  async () => {
-    await nextTick()
-    checkOverflow()
-  }
-)
+const layout = computed(() => computeBracketLayout(props.state))
 
 const flatMatches = computed(() =>
   layout.value.rounds.flatMap((round, roundIndex) =>
@@ -514,7 +338,7 @@ const flatMatches = computed(() =>
 )
 
 const champion = computed(() => {
-  const rounds = props.bracket.rounds
+  const rounds = props.state.rounds
   if (!rounds?.length) return null
   return rounds[rounds.length - 1][0]?.winner ?? null
 })
@@ -532,8 +356,7 @@ function isWinner(match, player) {
 }
 
 function isSelectable(match, player) {
-  if (!player || !match.p1 || !match.p2) return false
-  return match.winner !== player
+  return singleElimination.canPick(props.state, match.id, player)
 }
 
 function slotClass(match, player) {
@@ -562,7 +385,7 @@ function matchAriaLabel(match, roundIndex) {
 
 function onSelect(match, player, event) {
   if (!isSelectable(match, player)) return
-  emit('select-winner', { matchId: match.id, winner: player })
+  emit('apply-result', { matchId: match.id, result: { winner: player } })
   // Mouse/touch click: drop focus so Chromium does not leave a white SVG ring.
   if (event?.type === 'click') {
     event.currentTarget?.blur?.()

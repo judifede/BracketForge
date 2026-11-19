@@ -10,7 +10,8 @@
         BracketForge
       </Heading>
 
-      <RouterView />
+      <RouterView v-if="booted" />
+      <p v-else class="text-live" data-tour="app-booting">Cargando…</p>
     </main>
 
     <footer class="mt-auto pt-10 pb-2 text-center">
@@ -82,7 +83,8 @@ watch(
 )
 
 function startTour() {
-  const steps = getTourSteps(currentView.value).filter((step) => {
+  const formatId = competitionData.value?.tournamentFormat
+  const steps = getTourSteps(currentView.value, formatId).filter((step) => {
     if (!step.element) return true
     return Boolean(document.querySelector(step.element))
   })
